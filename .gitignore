@@ -1,0 +1,3 @@
+build
+# Ignore .env files for security reasons
+src/config.h
