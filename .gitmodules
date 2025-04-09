@@ -4,3 +4,9 @@
 [submodule "lib/FreeRTOS-Kernel"]
 	path = lib/FreeRTOS-Kernel
 	url = https://github.com/FreeRTOS/FreeRTOS-Kernel
+[submodule "lib/paho.mqtt.embedded-c"]
+	path = lib/paho.mqtt.embedded-c
+	url = https://github.com/eclipse/paho.mqtt.embedded-c.git
+[submodule "lib/wolfssl"]
+	path = lib/wolfssl
+	url = https://github.com/wolfSSL/wolfssl
