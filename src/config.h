@@ -1,0 +1,7 @@
+#define WIFI_SSID "WIFI_SSID"
+#define WIFI_PASSWORD "WIFI_PASSWORD"
+
+//IO Credentials
+#define IO_USERNAME "IO_USERNAME"
+#define IO_KEY "IO_KEY"
+#define IO_FEED_NAME "IO_FEED_NAME"

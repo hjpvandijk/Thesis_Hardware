@@ -16,10 +16,10 @@
 #define MEM_LIBC_MALLOC             0
 
 #define MEM_ALIGNMENT               4
-#define MEM_SIZE                    4000
+#define MEM_SIZE                    12000 //4000
 #define MEMP_NUM_TCP_SEG            32
 #define MEMP_NUM_ARP_QUEUE          10
-#define PBUF_POOL_SIZE              24
+#define PBUF_POOL_SIZE              32 //24
 #define LWIP_ARP                    1
 #define LWIP_ETHERNET               1
 #define LWIP_ICMP                   1
@@ -46,6 +46,16 @@
 #define DHCP_DOES_ARP_CHECK         1
 #define LWIP_DHCP_DOES_ACD_CHECK    0
 
+//DNS settings
+#define DNS_TABLE_SIZE      6
+#define DNS_MAX_REQUESTS    4
+
+//UDP settings
+#define MEMP_NUM_UDP_PCB         4   // DNS and SNTP
+#define MEMP_NUM_TCP_PCB         8   // MQTT/TCP clients
+#define MEMP_NUM_TCP_PCB_LISTEN  2   // Only if you're listening
+#define MEMP_NUM_NETBUF          8   // For netconn buffers
+#define MEMP_NUM_NETCONN         8   // Needed for sockets/netconn
 
 
 #ifndef NDEBUG
@@ -107,7 +117,7 @@
 void sntpSetTimeSec(uint32_t sec);
 #define SNTP_SET_SYSTEM_TIME(sec) sntpSetTimeSec(sec)
 //MEMP_NUM_SYS_TIMEOUTS Needs to be one larger than default for SNTP
-#define MEMP_NUM_SYS_TIMEOUT            (LWIP_NUM_SYS_TIMEOUT_INTERNAL + 1)
+#define MEMP_NUM_SYS_TIMEOUT            (LWIP_NUM_SYS_TIMEOUT_INTERNAL + 6)
 
 //Once an hour
 #define SNTP_UPDATE_DELAY 60000*60

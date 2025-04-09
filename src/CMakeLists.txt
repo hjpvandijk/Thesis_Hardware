@@ -1,20 +1,53 @@
 add_executable(${NAME}
         main.cpp
         WifiHelper.cpp
+        # mqtt/MQTTEcho.c
+        # mqtt/TestTrans.cpp
+        mqtt/Agent.cpp
+        mqtt/TCPTransport.cpp
+        mqtt/TLSTransBlock.cpp
+        mqtt/Transport.cpp
+        mqtt/radio.cpp
+        mqtt/MQTTCLient.cpp
         )
 
+# add_library(paho_embedded_mqtt STATIC
+#     # lib/paho.mqtt.embedded-c/MQTTClient-C/src/MQTTClient.c
+#     ../lib/paho.mqtt.embedded-c/MQTTClient-C/src/FreeRTOS/MQTTFreeRTOS.c  #FreeRTOS
+#     # lib/paho.mqtt.embedded-c/MQTTPacket/src/MQTTConnectClient.c
+#     # lib/paho.mqtt.embedded-c/MQTTPacket/src/MQTTConnect.c
+#     # lib/paho.mqtt.embedded-c/MQTTPacket/src/MQTTDeserializePublish.c
+#     # lib/paho.mqtt.embedded-c/MQTTPacket/src/MQTTFormat.c
+#     # lib/paho.mqtt.embedded-c/MQTTPacket/src/MQTTPacket.c
+#     # lib/paho.mqtt.embedded-c/MQTTPacket/src/MQTTSerializePublish.c
+#     # lib/paho.mqtt.embedded-c/MQTTPacket/src/MQTTSubscribeClient.c
+#     # lib/paho.mqtt.embedded-c/MQTTPacket/src/MQTTSubscribe.c
+#     # lib/paho.mqtt.embedded-c/MQTTPacket/src/MQTTUnsubscribeClient.c
+#     # lib/paho.mqtt.embedded-c/MQTTPacket/src/MQTTUnsubscribe.c
+#     # lib/paho.mqtt.embedded-c/MQTTPacket/src/MQTTDisconnect.c
+#     # lib/paho.mqtt.embedded-c/MQTTPacket/src/MQTTTimer.c  # use if you don't override this
+# )
+
+# target_include_directories(paho_embedded_mqtt PUBLIC
+#     lib/paho.mqtt.embedded-c/MQTTClient-C
+#     lib/paho.mqtt.embedded-c/MQTTPacket/src
+#     # ${CMAKE_SOURCE_DIR}/lib/FreeRTOS-Kernel/include    # Add this linep
+# )
+
+target_sources(${NAME} PRIVATE ${LWIP_CORE_SRC} ${LWIP_MQTT_SRC})
 # Pull in our pico_stdlib which pulls in commonly used features
 target_link_libraries(${NAME} 
-	 pico_stdlib
-     FreeRTOS-Kernel-Heap4 # FreeRTOS kernel and dynamic heap
-     freertos_config #FREERTOS_PORT
-     LWIP_PORT
-     pico_cyw43_arch_lwip_sys_freertos
-    #  coreHTTP
+    pico_stdlib
+    FreeRTOS-Kernel-Heap4 # FreeRTOS kernel and dynamic heap
+    freertos_config #FREERTOS_PORT
+    LWIP_PORT
+    pico_cyw43_arch_lwip_sys_freertos
+    # paho_embedded_mqtt
+     coreHTTP
     #  urilib
     #  json_maker
     #  tiny_json
-    #  wolfssl
+     wolfssl
     #  picow_wsclient
 	)
 	

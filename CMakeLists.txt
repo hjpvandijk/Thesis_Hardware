@@ -17,7 +17,7 @@ set(CMAKE_C_COMPILER_WORKS 1 CACHE INTERNAL "")
 set(CMAKE_CXX_COMPILER_WORKS 1 CACHE INTERNAL "")
 
 
-set(NAME WSExample) 
+set(NAME BICLARE_HARDWARE) 
 set(PICO_BOARD pico2_w)
 set(PICO_PLATFORM rp2350)
 
@@ -35,28 +35,6 @@ pico_sdk_init()
 
 include(lwip_import.cmake)
 
-# # CMakeLists.txt
-# # Set the path to your .env file
-# set(ENV_FILE "${CMAKE_SOURCE_DIR}/.env")
-
-# # Read the .env file line by line and set variables
-# if(EXISTS ${ENV_FILE})
-#     file(READ ${ENV_FILE} ENV_CONTENT)
-    
-#     # Extract variables from the content
-#     string(REGEX MATCHALL "([A-Za-z_][A-Za-z0-9_]*)=([^\n]*)" ENV_VARS ${ENV_CONTENT})
-
-#     foreach(MATCH ${ENV_VARS})
-#         string(REGEX REPLACE "^([A-Za-z_][A-Za-z0-9_]*)=(.*)$" "\\1" VAR_NAME ${MATCH})
-#         string(REGEX REPLACE "^([A-Za-z_][A-Za-z0-9_]*)=(.*)$" "\\2" VAR_VALUE ${MATCH})
-
-#         # Set the environment variable
-#         set(ENV{${VAR_NAME}} ${VAR_VALUE})
-#     endforeach()
-# else()
-#     message(FATAL_ERROR "No .env file found!")
-# endif()
-
 # SET(FREERTOS_KERNEL_PATH "${CMAKE_CURRENT_LIST_DIR}/lib/RPIPicoWWSClient-RTOS/lib/FreeRTOS-Kernel")
 # SET(FREERTOS_KERNEL_PATH "${CMAKE_CURRENT_LIST_DIR}/port/FreeRTOS-Kernel")
 SET(FREERTOS_KERNEL_PATH "${CMAKE_CURRENT_LIST_DIR}/lib/FreeRTOS-Kernel")
@@ -68,9 +46,9 @@ include(${CMAKE_CURRENT_LIST_DIR}/port/FreeRTOS-Kernel/freertos_config.cmake)
 include_directories("${FREERTOS_CONFIG_FILE_DIRECTORY}") 
 include(FreeRTOS_Kernel_import.cmake)
 
-# set(COREHTTP_PATH "${CMAKE_CURRENT_LIST_DIR}/lib/RPIPicoWWSClient-RTOS/lib/coreHTTP")# CACHE STRING "Course Common Lib")
-# set(COREHTTP_PORT "${CMAKE_CURRENT_LIST_DIR}/port/coreHTTP/") # CACHE STRING "Course Common Lib")
-# include(coreHTTP.cmake)
+set(COREHTTP_PATH "${CMAKE_CURRENT_LIST_DIR}/lib/RPIPicoWWSClient-RTOS/lib/coreHTTP")# CACHE STRING "Course Common Lib")
+set(COREHTTP_PORT "${CMAKE_CURRENT_LIST_DIR}/port/coreHTTP/") # CACHE STRING "Course Common Lib")
+include(coreHTTP.cmake)
 
 # SET(URILIB_PATH "${CMAKE_CURRENT_LIST_DIR}/lib/RPIPicoWWSClient-RTOS/lib/uri-library") # CACHE STRING "Common Lib")
 # include(urilib.cmake)
@@ -82,10 +60,13 @@ include(FreeRTOS_Kernel_import.cmake)
 # include(tiny-json.cmake)
 
 # set(WOLFSSL_DIR "${CMAKE_CURRENT_LIST_DIR}/lib/RPIPicoWWSClient-RTOS/lib/wolfssl") # CACHE STRING "Course Common Lib")
-# include("wolfssl_import.cmake")
+set(WOLFSSL_DIR "${CMAKE_CURRENT_LIST_DIR}/lib/wolfssl") # CACHE STRING "Course Common Lib")
+include("wolfssl_import.cmake")
 
 # set(PICOW_WSCLIENT_PATH "${CMAKE_CURRENT_LIST_DIR}/lib/RPIPicoWWSClient-RTOS")# CACHE STRING "Course Common Lib")
 # include("PicoW_WSClient.cmake")
+
+
 
 
 add_subdirectory(src)

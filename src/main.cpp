@@ -22,6 +22,12 @@
 #include "WifiHelper.h"
 // #include "Request.h"
 #include "config.h"
+// #include "mqtt/TestTrans.h"
+#include "mqtt/MQTTClient.h"
+#include "mqtt/radio.h"
+#include <vector>
+#include <string>
+#include "pico/unique_id.h"
 
 
 
@@ -36,6 +42,7 @@
 #define TASK_PRIORITY     ( tskIDLE_PRIORITY + 1UL )
 #define BUF_LEN					2048
 
+pico_unique_board_id_t id;
 
 void runTimeStats(){
   TaskStatus_t         * pxTaskStatusArray;
@@ -98,93 +105,185 @@ void debugCB(const int logLevel, const char *const logMessage){
 }
 
 
+// void main_task(void* params){
+
+// 	printf("Main task started\n");
+
+// 	// wolfSSL_Init();
+// 	// wolfSSL_SetLoggingCb( debugCB);
+// 	//wolfSSL_Debugging_ON();
+
+
+// 	if (WifiHelper::init()){
+// 	printf("Wifi Controller Initialised\n");
+// 	} else {
+// 	printf("Failed to initialise controller\n");
+// 	return;
+// 	}
+
+
+
+
+// 	printf("Connecting to WiFi... %s \n", WIFI_SSID);
+
+// 	if (WifiHelper::join(WIFI_SSID, WIFI_PASSWORD)){
+// 	printf("Connect to Wifi\n");
+// 	}
+// 	else {
+// 	printf("Failed to connect to Wifi \n");
+// 	}
+
+
+// 	//Print MAC Address
+// 	char macStr[20];
+// 	WifiHelper::getMACAddressStr(macStr);
+// 	printf("MAC ADDRESS: %s\n", macStr);
+
+// 	//Print IP Address
+// 	char ipStr[20];
+// 	WifiHelper::getIPAddressStr(ipStr);
+// 	printf("IP ADDRESS: %s\n", ipStr);
+
+
+// 	//Call IPGeo Web Service
+// 	char userBuf[BUF_LEN];
+// 	// Request req((char *)userBuf, BUF_LEN);
+// 	bool res;
+// 	//char url[] = "https://vmu22a.local.jondurrant.com:5443/time";
+// 	// char url[] = "https://api.ipgeolocation.io/ipgeo";
+// 	//char url[] = "http://vmu22a.local.jondurrant.com:5000/args";
+// 	//char url[] = "https://vmu22a.local.jondurrant.com:5443/args";
+
+// 	// std::map<std::string, std::string> query;
+
+// 	// query["apiKey"]=IPGEOLOCATION;
+// 	runTimeStats();
+// 	// res = req.get(url, &query);
+// 	// if ( res ){
+// 	// 	res = (req.getStatusCode() == 200);
+// 	// }
+// 	// if (res){
+// 	// 	printf("IPGeo: %.*s\n", req.getPayloadLen(), req.getPayload());
+// 	// } else {
+// 	// 	printf("IPGeo failed %d\n", req.getStatusCode());
+// 	// }
+
+// 	runTimeStats();
+
+
+
+// 	while (true){
+
+// 	runTimeStats();
+
+// 	vTaskDelay(3000);
+
+
+// 	if (!WifiHelper::isJoined()){
+// 	  printf("AP Link is down\n");
+
+// 	  if (WifiHelper::join(WIFI_SSID, WIFI_PASSWORD)){
+// 		printf("Connect to Wifi\n");
+// 	  } else {
+// 		printf("Failed to connect to Wifi \n");
+// 	  }
+// 	} else {
+// 		printf("AP Link is up\n");
+// 	}
+
+// 	}
+
+// }
+
+std::string getPicoUniqueID() {
+  pico_unique_board_id_t id;
+  pico_get_unique_board_id(&id);
+
+  char buffer[PICO_UNIQUE_BOARD_ID_SIZE_BYTES * 2 + 1];
+  for (int i = 0; i < PICO_UNIQUE_BOARD_ID_SIZE_BYTES; ++i) {
+    snprintf(&buffer[i * 2], 3, "%02X", id.id[i]);
+  }
+
+  return std::string(buffer);
+}
+
 void main_task(void* params){
 
-	printf("Main task started\n");
+  std::string uniqueID = getPicoUniqueID();
 
-	// wolfSSL_Init();
-	// wolfSSL_SetLoggingCb( debugCB);
-	//wolfSSL_Debugging_ON();
+  //Assign random agent id
 
+  printf("Main task started\n");
 
-	if (WifiHelper::init()){
-	printf("Wifi Controller Initialised\n");
-	} else {
-	printf("Failed to initialise controller\n");
-	return;
-	}
-
+  if (WifiHelper::init()){
+    printf("Wifi Controller Initialised\n");
+  } else {
+    printf("Failed to initialise controller\n");
+    return;
+  }
 
 
+  printf("Connecting to WiFi... %s \n", WIFI_SSID);
 
-	printf("Connecting to WiFi... %s \n", WIFI_SSID);
-
-	if (WifiHelper::join(WIFI_SSID, WIFI_PASSWORD)){
-	printf("Connect to Wifi\n");
-	}
-	else {
-	printf("Failed to connect to Wifi \n");
-	}
-
-
-	//Print MAC Address
-	char macStr[20];
-	WifiHelper::getMACAddressStr(macStr);
-	printf("MAC ADDRESS: %s\n", macStr);
-
-	//Print IP Address
-	char ipStr[20];
-	WifiHelper::getIPAddressStr(ipStr);
-	printf("IP ADDRESS: %s\n", ipStr);
+  if (WifiHelper::join(WIFI_SSID, WIFI_PASSWORD)){
+    printf("Connect to Wifi\n");
+  }
+  else {
+    printf("Failed to connect to Wifi \n");
+  }
 
 
-	//Call IPGeo Web Service
-	char userBuf[BUF_LEN];
-	// Request req((char *)userBuf, BUF_LEN);
-	bool res;
-	//char url[] = "https://vmu22a.local.jondurrant.com:5443/time";
-	// char url[] = "https://api.ipgeolocation.io/ipgeo";
-	//char url[] = "http://vmu22a.local.jondurrant.com:5000/args";
-	//char url[] = "https://vmu22a.local.jondurrant.com:5443/args";
+  //Print MAC Address
+  char macStr[20];
+  WifiHelper::getMACAddressStr(macStr);
+  printf("MAC ADDRESS: %s\n", macStr);
 
-	// std::map<std::string, std::string> query;
-
-	// query["apiKey"]=IPGEOLOCATION;
-	runTimeStats();
-	// res = req.get(url, &query);
-	// if ( res ){
-	// 	res = (req.getStatusCode() == 200);
-	// }
-	// if (res){
-	// 	printf("IPGeo: %.*s\n", req.getPayloadLen(), req.getPayload());
-	// } else {
-	// 	printf("IPGeo failed %d\n", req.getStatusCode());
-	// }
-
-	runTimeStats();
+  //Print IP Address
+  char ipStr[20];
+  WifiHelper::getIPAddressStr(ipStr);
+  printf("IP ADDRESS: %s\n", ipStr);
 
 
+  // TestTrans testTrans;
+  // testTrans.start("test", TASK_PRIORITY);
 
-	while (true){
+  MQTTClient mqttClient(uniqueID);
+  mqttClient.start("mqtt", TASK_PRIORITY);
 
-	runTimeStats();
+  Radio radio(&mqttClient);
 
-	vTaskDelay(3000);
+  int i = 0;
+  while (true){
+
+    // runTimeStats();
+    std::string bMessage = "Hello World " + std::to_string(i++);
+    std::string bMessagePrependedWithId = "[" + uniqueID + "]" + bMessage;
+    radio.broadcast_message(bMessagePrependedWithId);
+    std::string sMessage = "Your World " + std::to_string(i++);
+    std::string sMessagePrependedWithId = "[" + uniqueID + "]" + sMessage;
+    radio.send_message(sMessagePrependedWithId, "agent1");
+
+    // mqttClient.addMessageToSend("Hello World " + std::to_string(i++));
+    std::vector<std::string> messages;
+    radio.receive_messages(messages, 0.0);
+    for (const auto& message : messages) {
+      printf("Received message in vector: %s\n", message.c_str());
+    }
+
+    vTaskDelay(8000);
+
+    if (!WifiHelper::isJoined()){
+      printf("AP Link is down\n");
+
+      if (WifiHelper::join(WIFI_SSID, WIFI_PASSWORD)){
+        printf("Connect to Wifi\n");
+      } else {
+        printf("Failed to connect to Wifi \n");
+      }
+    }
 
 
-	if (!WifiHelper::isJoined()){
-	  printf("AP Link is down\n");
-
-	  if (WifiHelper::join(WIFI_SSID, WIFI_PASSWORD)){
-		printf("Connect to Wifi\n");
-	  } else {
-		printf("Failed to connect to Wifi \n");
-	  }
-	} else {
-		printf("AP Link is up\n");
-	}
-
-	}
+  }
 
 }
 

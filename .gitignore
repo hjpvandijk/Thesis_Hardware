@@ -1,3 +1,5 @@
 build
 # Ignore .env files for security reasons
-src/config.h
+# src/config.h
+.vscode/*
+.clang-format
