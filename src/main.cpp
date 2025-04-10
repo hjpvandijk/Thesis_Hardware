@@ -25,9 +25,13 @@
 // #include "mqtt/TestTrans.h"
 #include "mqtt/MQTTClient.h"
 #include "mqtt/radio.h"
+#include "uart/UARTHandler.h"
 #include <vector>
 #include <string>
 #include "pico/unique_id.h"
+#include "motion/MotorController.h"
+#include "pins.h"
+#include "sensing/DistanceSensorHandler.h"
 
 
 
@@ -213,74 +217,111 @@ void main_task(void* params){
 
   //Assign random agent id
 
-  printf("Main task started\n");
+  // printf("Main task started\n");
 
-  if (WifiHelper::init()){
-    printf("Wifi Controller Initialised\n");
-  } else {
-    printf("Failed to initialise controller\n");
-    return;
-  }
-
-
-  printf("Connecting to WiFi... %s \n", WIFI_SSID);
-
-  if (WifiHelper::join(WIFI_SSID, WIFI_PASSWORD)){
-    printf("Connect to Wifi\n");
-  }
-  else {
-    printf("Failed to connect to Wifi \n");
-  }
+  // if (WifiHelper::init()){
+  //   printf("Wifi Controller Initialised\n");
+  // } else {
+  //   printf("Failed to initialise controller\n");
+  //   return;
+  // }
 
 
-  //Print MAC Address
-  char macStr[20];
-  WifiHelper::getMACAddressStr(macStr);
-  printf("MAC ADDRESS: %s\n", macStr);
+  // printf("Connecting to WiFi... %s \n", WIFI_SSID);
 
-  //Print IP Address
-  char ipStr[20];
-  WifiHelper::getIPAddressStr(ipStr);
-  printf("IP ADDRESS: %s\n", ipStr);
+  // if (WifiHelper::join(WIFI_SSID, WIFI_PASSWORD)){
+  //   printf("Connect to Wifi\n");
+  // }
+  // else {
+  //   printf("Failed to connect to Wifi \n");
+  // }
+
+
+  // //Print MAC Address
+  // char macStr[20];
+  // WifiHelper::getMACAddressStr(macStr);
+  // printf("MAC ADDRESS: %s\n", macStr);
+
+  // //Print IP Address
+  // char ipStr[20];
+  // WifiHelper::getIPAddressStr(ipStr);
+  // printf("IP ADDRESS: %s\n", ipStr);
 
 
   // TestTrans testTrans;
   // testTrans.start("test", TASK_PRIORITY);
 
-  MQTTClient mqttClient(uniqueID);
-  mqttClient.start("mqtt", TASK_PRIORITY);
+  // MQTTClient mqttClient(uniqueID);
+  // mqttClient.start("mqtt", TASK_PRIORITY);
 
-  Radio radio(&mqttClient);
+  // Radio radio(&mqttClient);
+
+  // UARTHandler uartHandler;
+  // uartHandler.start("uart", TASK_PRIORITY);
+
+  // MotorController motorController;
+  // motorController.setLeftMotorSpeed(220);
+  // motorController.setRightMotorSpeed(220);
+
+  // bool motorsRunning = true;
+
+  DistanceSensorHandler distanceSensorHandler;
+  distanceSensorHandler.start("distance", TASK_PRIORITY);
+  
 
   int i = 0;
   while (true){
 
-    // runTimeStats();
-    std::string bMessage = "Hello World " + std::to_string(i++);
-    std::string bMessagePrependedWithId = "[" + uniqueID + "]" + bMessage;
-    radio.broadcast_message(bMessagePrependedWithId);
-    std::string sMessage = "Your World " + std::to_string(i++);
-    std::string sMessagePrependedWithId = "[" + uniqueID + "]" + sMessage;
-    radio.send_message(sMessagePrependedWithId, "agent1");
+    // printf("0: %f:\n", distanceSensorHandler.getDistance(0));
 
-    // mqttClient.addMessageToSend("Hello World " + std::to_string(i++));
-    std::vector<std::string> messages;
-    radio.receive_messages(messages, 0.0);
-    for (const auto& message : messages) {
-      printf("Received message in vector: %s\n", message.c_str());
+    for (int i = 0; i < 4; i++) {
+      float distance = distanceSensorHandler.getDistance(i);
+      printf("%d: %f\t", i, distance);
     }
+    printf("\n");
 
-    vTaskDelay(8000);
+    // // runTimeStats();
+    // std::string bMessage = "Hello World " + std::to_string(i++);
+    // std::string bMessagePrependedWithId = "[" + uniqueID + "]" + bMessage;
+    // radio.broadcast_message(bMessagePrependedWithId);
+    // std::string sMessage = "Your World " + std::to_string(i++);
+    // std::string sMessagePrependedWithId = "[" + uniqueID + "]" + sMessage;
+    // radio.send_message(sMessagePrependedWithId, "agent1");
 
-    if (!WifiHelper::isJoined()){
-      printf("AP Link is down\n");
+    // // mqttClient.addMessageToSend("Hello World " + std::to_string(i++));
+    // std::vector<std::string> messages;
+    // radio.receive_messages(messages, 0.0);
+    // for (const auto& message : messages) {
+    //   printf("Received message in vector: %s\n", message.c_str());
+    // }
 
-      if (WifiHelper::join(WIFI_SSID, WIFI_PASSWORD)){
-        printf("Connect to Wifi\n");
-      } else {
-        printf("Failed to connect to Wifi \n");
-      }
-    }
+    // printf("Main task running\n");
+
+    
+
+
+    // if (motorsRunning){
+    //   motorController.setLeftMotorSpeed(220);
+    //   motorController.setRightMotorSpeed(-220);
+    //   motorsRunning = false;
+    //   printf("Turning right\n");
+    // } else {
+    //   motorController.setLeftMotorSpeed(-220);
+    //   motorController.setRightMotorSpeed(220);
+    //   motorsRunning = true;
+    //   printf("Turning left\n");
+    // }
+
+    // if (!WifiHelper::isJoined()){
+    //   printf("AP Link is down\n");
+
+    //   if (WifiHelper::join(WIFI_SSID, WIFI_PASSWORD)){
+    //     printf("Connect to Wifi\n");
+    //   } else {
+    //     printf("Failed to connect to Wifi \n");
+    //   }
+    // }
+    vTaskDelay(20);
 
 
   }

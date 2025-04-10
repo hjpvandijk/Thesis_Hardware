@@ -1,14 +1,20 @@
 add_executable(${NAME}
         main.cpp
+        pins.h
         WifiHelper.cpp
         # mqtt/MQTTEcho.c
         # mqtt/TestTrans.cpp
-        mqtt/Agent.cpp
+        Agent.cpp
         mqtt/TCPTransport.cpp
         mqtt/TLSTransBlock.cpp
         mqtt/Transport.cpp
         mqtt/radio.cpp
         mqtt/MQTTCLient.cpp
+        uart/UARTHandler.cpp
+        motion/MotorController.cpp
+        motion/DifferentialDrive.cpp
+        sensing/HC_SR04.cpp
+        sensing/DistanceSensorHandler.cpp
         )
 
 # add_library(paho_embedded_mqtt STATIC
@@ -38,6 +44,7 @@ target_sources(${NAME} PRIVATE ${LWIP_CORE_SRC} ${LWIP_MQTT_SRC})
 # Pull in our pico_stdlib which pulls in commonly used features
 target_link_libraries(${NAME} 
     pico_stdlib
+    hardware_pwm
     FreeRTOS-Kernel-Heap4 # FreeRTOS kernel and dynamic heap
     freertos_config #FREERTOS_PORT
     LWIP_PORT
