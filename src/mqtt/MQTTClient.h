@@ -8,19 +8,24 @@
 #ifndef MQTTCLIENT_H_
 #define MQTTCLIENT_H_
 
-#include "pico/stdlib.h"
-#include "FreeRTOS.h"
-#include "task.h"
 
-#include "../Agent.h"
-#include "lwip/apps/mqtt.h"
-#include "lwip/dns.h"
+#include "../TaskAgent.h"
+
 
 #include <vector>
 #include <string>
+
+
+#include "lwip/apps/mqtt.h"
+#include "lwip/dns.h"
+
+#include "pico/stdlib.h"
+#include "FreeRTOS.h"
+#include "task.h"
 #include "queue.h"
 
-class MQTTClient : public Agent{
+
+class MQTTClient : public TaskAgent{
 public:
 	MQTTClient(std::string id);
 	virtual ~MQTTClient();

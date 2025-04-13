@@ -1,15 +1,15 @@
 #ifndef HC_SR04_H
 #define HC_SR04_H
 
-#include "pico/stdlib.h"
 #include <stdint.h>
 #include <cstdio>
 
 class HC_SR04 {
 public:
+    HC_SR04() = default; // Default constructor
     HC_SR04(uint8_t triggerPin, uint8_t echoPin);
     float measureDistance();
-    double getLatestDistance() const { return latestDistance; }
+    double getDistance() const { return latestDistance; }
     static void echo_irq_handler(uint gpio, uint32_t events, HC_SR04* instance);
 
 private:

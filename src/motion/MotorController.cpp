@@ -1,5 +1,7 @@
 #include "MotorController.h"
 #include "../pins.h"
+#include "pico/stdlib.h"
+#include "hardware/pwm.h"
 
 
 MotorController::MotorController(){

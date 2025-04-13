@@ -24,7 +24,7 @@ public:
     double current_speed_right;
     double current_speed_left;
 
-    DifferentialDrive() = default;
+    DifferentialDrive();
     DifferentialDrive(float max_speed_straight, float max_speed_turn);
 
 
@@ -62,7 +62,7 @@ private:
     unsigned long prevTime = 0;
     
     
-    const int slotsPerRevolution = 20;  // Adjust based on your slotted wheel
+    int slotsPerRevolution = 20;  // Adjust based on your slotted wheel
     
     
     int pulseCountMs = 1000;

@@ -1,0 +1,84 @@
+mission:
+  end_time: 400 # The time in seconds when the mission ends
+  end_battery_level: 0 # The battery level in percent when the mission ends
+physical:
+  robot_diameter: 0.08 # Agent diameter in meters
+  robot_weight: 0.4 # Agent weight in kg
+  robot_wheel_radius: 0.0205 # Agent wheel radius in meters
+  robot_inter_wheel_distance: 0.0656 # Agent inter-wheel distance in meters
+battery:
+  capacity: 600 # Battery capacity in mAh
+  voltage: 5.0 # Battery voltage in volts
+motor:
+  stall_current: 1.5 # Motor stall current in A
+  stall_torque: 0.8 # Motor stall torque in Nm
+  no_load_rpm: 250 # Max rpm of the motor with no load
+  no_load_current: 0.16 # Motor no load current in A
+control:
+  turn_threshold: 15 # The min angle difference in degrees between the desired and current orientation to start turning
+  turn_speed_ratio: 0.1 # The ratio of the maximum speed of the motors to use when turning
+  360_degrees_steps: 360 # The number of steps we divide the 360 degrees in when deciding the free directions
+  object_safety_radius: 0.2 # The safety radius around an object in meters
+  agent_safety_radius_margin: 0.1 # The margin around the agent's safety radius in meters
+  disallow_frontier_switching:
+    frontier_reach_distance: 0.2 # The distance in meters when we consider a frontier reached
+    frontier_switch_interval: 2 # The minimum time in seconds between allowing a frontier switch
+    target_feasibility_check_interval: 10 # The time in seconds between target feasibility checks
+    feasibility_check_only_route: true # If true, we only check the feasibility of the route to the target, don't reevaluate the target itself
+  separate_frontiers:
+    distance_threshold: 1.0 # The distance in meters between two frontiers to consider them separate
+  path_planning:
+    max_route_length: 30 # The maximum length of a route in sections, if exceeded, the route is considered infeasible. This saves computation time.
+communication:
+  agent_info_relevant: 10 # The time in seconds received information from another agent is relevant in the agent's decision making
+  quadtree_exchange_interval: 15 # The time in seconds between quadtree exchanges
+  time_sync_interval: 10 # The time in seconds between time synchronization
+  wifi_speed: 10 # The wifi speed in Mbps
+  wifi_range: 30.0 # The wifi range in meters
+  max_jitter: 10 # The maximum jitter in milliseconds
+  message_loss_probability: 0 # 0.05 # The probability of a message being lost
+forces:
+  frontier_search_radius: 5.0 # The radius in meters around the agent to search for frontiers
+  max_frontier_cells: 999999 # The maximum number of queried frontier cells
+  frontier_cell_ratio: 0.75 # The ratio of the frontier cells to the total number of cells in the frontier
+  max_frontier_regions: 10 # The maximum number of frontier regions
+  agent_avoidance_radius: 0.5 # The radius in meters around the agent to avoid other agents
+  agent_cohesion_radius: 1.5 # The radius in meters around the agent to cohere with other agents
+  agent_alignment_radius: 1 # The radius in meters around the agent to align with other agents
+  object_avoidance_radius_margin: 0.1 # The margin around the object's safety radius in meters (to be added to agent_safety_radius + object_safety_radius))
+  virtual_wall_avoidance_weight: 0 #1.1 # The weight of the virtual wall avoidance force
+  agent_cohesion_weight: 0 # The weight of the agent cohesion force
+  agent_avoidance_weight: 1.15 # The weight of the agent avoidance force
+  agent_alignment_weight: 0.1 # The weight of the agent alignment force
+  target_weight: 0.3 # The weight of the target (frontier or subtarget) force
+  frontier_fitness:
+    distance_weight: 0 # The weight of the euclidean distance to the target in the fitness function
+    size_weight: 0 # The weight of the size of the frontier in the fitness function
+    reach_battery_weight: 1.5 # The weight of battery usage to reach the frontier in the probability function
+    reach_duration_weight: 0.1 # The weight of the time to reach the frontier in the probability function
+    pheromone_weight: 0.05 # The weight of the pheromone value in the fitness function
+    k: 0.0001 # If increased, frontier region choice moves more towards random
+    n: 3 # >= 0; If increased, the average certainty and region size will have more impact on the probability of choosing a frontier region
+    m: 2.5 # >= 1 ; If increased, the reach distance, time, and battery usage have more impact on the probability of choosing a frontier region
+confidence:
+  p_free: 0.511441 # The probability of an observed free cell being free
+  p_occupied: 0.484670 # The probability of an observed occupied cell being not free
+  alpha_receive: 0.6 # The factor with which we doubt a received confidence value
+  p_free_threshold: 0.7 # The threshold for a cell to be considered free
+  p_occupied_threshold: 0.3 # The threshold for a cell to be considered occupied
+  p_max: 0.90 # The maximum confidence value (< 1), smaller results in faster change of occupancy estimation
+  p_min: 0.05 # The minimum confidence value (> 0), larger results in faster change of occupancy estimation
+  p_at_max_sensor_range: 0.75 #The probability of a sensor reading being correct at the maximum sensor range, used to linearly interpolate probability values
+quadtree:
+  resolution: 0.25 # The resolution of the quadtree in meters --> will be rounded down to the nearest power of 2 division of the map size
+  evaporation_time: 100 # The time in seconds it takes for a pheromone value to evaporate
+  evaporated_pheromone_factor: 0.05 # If a cell has ever been explored, the pheromone value will never be lower than this factor of the maximum confidence value (from 0.5)
+  merge_max_visited_time_difference: 5 # The maximum time difference in seconds between two quadtree nodes to merge them
+  merge_max_confidence_diff: 0.05 # The maximum confidence difference between two quadtree nodes to merge them
+sensors:
+  position_noise: 103.3 # Position noise in centimeters (uniform)
+  position_jitter: 10 # Position jitter in centimeters (uniform)
+  orientation_noise: 8 # Orientation sensor noise in degrees (uniform)
+  orientation_jitter: 2 # Orientation sensor jitter in degrees (uniform)
+  distance_sensor_noise: 5 # Distance sensor noise in centimeters (uniform)
+  distance_sensor_range: 2 # Distance sensor range in meters

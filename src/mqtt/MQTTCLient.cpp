@@ -6,12 +6,13 @@
  */
 
 #include "MQTTClient.h"
-#include "WifiHelper.h"
+#include "../WifiHelper.h"
 #include "TCPTransport.h"
 #include "TLSTransBlock.h"
 #include "../config.h"
 // #include "transport_interface.h"
 #include <memory>
+
 
 
 // Define the MQTT connection parameters
@@ -94,14 +95,14 @@ void MQTTClient::publish_message(mqtt_client_t *client, void *arg, const char* p
   err_t err;
   u8_t qos = 2; /* 0 1 or 2, see MQTT specification */
   u8_t retain = 0; /* No don't retain payload... */
-  printf("Publishing to topic %s\n", IO_USERNAME "/feeds/" IO_FEED_NAME);
+//   printf("Publishing to topic %s\n", IO_USERNAME "/feeds/" IO_FEED_NAME);
   err = mqtt_publish(client, IO_USERNAME "/feeds/" IO_FEED_NAME, pub_payload, strlen(pub_payload), qos, retain, mqtt_pub_request_cb, arg);
-  if(err != ERR_OK) {
-    printf("Publish err: %d\n", err);
-  }
-  else {
-    printf("Publish ok\n");
-  }
+//   if(err != ERR_OK) {
+//     printf("Publish err: %d\n", err);
+//   }
+//   else {
+//     printf("Publish ok\n");
+//   }
 }
 
 
@@ -135,12 +136,12 @@ void MQTTClient::mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u
 
     // Check if this is the final chunk
     if (flags & MQTT_DATA_FLAG_LAST) {
-        printf("Received full message: %s\n", incomingBuffer.c_str());
+        // printf("Received full message: %s\n", incomingBuffer.c_str());
 
         // Make a heap-allocated copy and enqueue
         std::string* msgCopy = new std::string(incomingBuffer);
         if (xQueueSend(mqttIncomingQueue, &msgCopy, 0) != pdTRUE) {
-            printf("Failed to send incoming message to queue\n");
+            // printf("Failed to send incoming message to queue\n");
             delete msgCopy;
         }
 
@@ -249,20 +250,20 @@ void MQTTClient::sendMessages() {
     if (mqttSendQueue != NULL) {
         char* message;
         while (xQueueReceive(mqttSendQueue, &message, 0) == pdTRUE) {
-            printf("Sending message: %s\n", message);
+            // printf("Sending message: %s\n", message);
             publish_message(client, NULL, message);
             free(message); // Free the allocated memory after sending
         }
-        printf("Finished sending messages\n");
+        // printf("Finished sending messages\n");
     }
 }
 
 void MQTTClient::addMessageToSend(std::string message){
-    printf("Adding message to send queue: %s\n", message.c_str());
+    // printf("Adding message to send queue: %s\n", message.c_str());
     char* messagePtr = strdup(message.c_str());
     // const char* messagePtr = message.c_str();
     if (xQueueSend(mqttSendQueue, &messagePtr, 2) != pdTRUE){
-        printf("Failed to send message to queue\n");
+        // printf("Failed to send message to queue\n");
         free(messagePtr); // Free the allocated memory if sending fails
     }
 }
@@ -272,7 +273,7 @@ void MQTTClient::getIncomingMessages(std::vector<std::string> &messages) {
         std::string* messagePtr;
         while (xQueueReceive(mqttIncomingQueue, &messagePtr, 0) == pdTRUE) {
             if (messagePtr != nullptr) {
-                printf("Received message: %s\n", messagePtr->c_str());
+                // printf("Received message: %s\n", messagePtr->c_str());
                 messages.push_back(*messagePtr);
                 delete messagePtr; // Clean up
             }

@@ -1,10 +1,18 @@
+
+add_custom_command(
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/config_yaml_data.h
+    COMMAND xxd -i ${CMAKE_CURRENT_SOURCE_DIR}/agent_implementation/configs/fsr_mfr_mrl/AAVFIXm1o5_end_time_400_noise_0_wifi_range_99999_message_loss_probability_0_frontier_search_radius_5_max_frontier_regions_20_evaporation_time_100_max_route_length_30.yaml > ${CMAKE_CURRENT_BINARY_DIR}/config_yaml_data.h
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/agent_implementation/configs/fsr_mfr_mrl/AAVFIXm1o5_end_time_400_noise_0_wifi_range_99999_message_loss_probability_0_frontier_search_radius_5_max_frontier_regions_20_evaporation_time_100_max_route_length_30.yaml
+    COMMENT "Generating config_yaml_data.h"
+)
+
 add_executable(${NAME}
         main.cpp
         pins.h
         WifiHelper.cpp
         # mqtt/MQTTEcho.c
         # mqtt/TestTrans.cpp
-        Agent.cpp
+        TaskAgent.cpp
         mqtt/TCPTransport.cpp
         mqtt/TLSTransBlock.cpp
         mqtt/Transport.cpp
@@ -13,9 +21,33 @@ add_executable(${NAME}
         uart/UARTHandler.cpp
         motion/MotorController.cpp
         motion/DifferentialDrive.cpp
+        # motion/MotorEncoder.cpp
+        # motion/PID.cpp
         sensing/HC_SR04.cpp
         sensing/DistanceSensorHandler.cpp
+        agent_implementation/agent.cpp
+        agent_implementation/agent_control/battery/BatteryManager.cpp
+        agent_implementation/agent_control/battery/MicroControllerBatterManager.cpp
+        agent_implementation/agent_control/battery/MotionSystemBatteryManager.cpp
+        agent_implementation/agent_control/communication/TimeSynchronizer.cpp
+        agent_implementation/agent_control/path_planning/SimplePathPlanner.cpp
+        agent_implementation/agent_control/path_planning/PathFollower.cpp
+        agent_implementation/agent_control/path_planning/FrontierEvaluator.cpp
+        agent_implementation/agent_control/path_planning/ForceVectorCalculator.cpp
+        agent_implementation/agent_control/path_planning/RandomWalk.cpp
+        agent_implementation/utils/Algorithms.cpp
+        agent_implementation/utils/Quadtree.h
+        agent_implementation/utils/Box.h
+        agent_implementation/utils/CustomComparator.h
+        agent_implementation/utils/coordinate.cpp
+        ${CMAKE_CURRENT_BINARY_DIR}/config_yaml_data.h
         )
+
+target_sources(${NAME} PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/config_yaml_data.h) # Change is here.
+target_include_directories(${NAME} PRIVATE ${CMAKE_CURRENT_BINARY_DIR}) # Add this line!
+# add_subdirectory(agent_implementation)
+add_subdirectory(argos3)
+
 
 # add_library(paho_embedded_mqtt STATIC
 #     # lib/paho.mqtt.embedded-c/MQTTClient-C/src/MQTTClient.c
@@ -40,9 +72,23 @@ add_executable(${NAME}
 #     # ${CMAKE_SOURCE_DIR}/lib/FreeRTOS-Kernel/include    # Add this linep
 # )
 
+
+# Link directories (if you have specific libraries to link against)
+include(FetchContent)
+
+FetchContent_Declare(
+        yaml-cpp
+        GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
+        GIT_TAG master# Can be a tag (yaml-cpp-x.x.x), a commit hash, or a branch name (master)
+)
+set(YAML_CPP_BUILD_TOOLS OFF)
+FetchContent_MakeAvailable(yaml-cpp)
+
 target_sources(${NAME} PRIVATE ${LWIP_CORE_SRC} ${LWIP_MQTT_SRC})
 # Pull in our pico_stdlib which pulls in commonly used features
 target_link_libraries(${NAME} 
+    yaml-cpp::yaml-cpp
+    argos3
     pico_stdlib
     hardware_pwm
     FreeRTOS-Kernel-Heap4 # FreeRTOS kernel and dynamic heap
@@ -56,11 +102,23 @@ target_link_libraries(${NAME}
     #  tiny_json
      wolfssl
     #  picow_wsclient
+
 	)
+
 	
-target_include_directories(${NAME} PRIVATE
-    ${CMAKE_CURRENT_LIST_DIR}
-     )
+# target_include_directories(${NAME} PRIVATE
+#     ${CMAKE_CURRENT_LIST_DIR}
+#     ${CMAKE_CURRENT_LIST_DIR}/Thesis_ARGoS/implementation_and_examples/agent_implementation
+#     ${CMAKE_CURRENT_LIST_DIR}/argos3
+#     ${CMAKE_CURRENT_LIST_DIR}/mqtt
+#     ${CMAKE_CURRENT_LIST_DIR}/motion
+#     ${CMAKE_CURRENT_LIST_DIR}/sensing
+
+#      )
+
+
+# message(STATUS "CMAKE_CURRENT_LIST_DIR: ${CMAKE_CURRENT_LIST_DIR}")
+# add_dependencies(${NAME} argos3 agent_implementation)
      
 # if (NOT DEFINED ENV{WIFI_SSID})
 # 	message(FATAL_ERROR "WIFI_SSID Environment variable not defined")

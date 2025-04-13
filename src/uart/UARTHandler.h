@@ -3,13 +3,13 @@
 #define UARTHANDLER_H_
 
 #include <stdio.h>
-#include "../Agent.h"
+#include "../TaskAgent.h"
 
 #include <pico/stdlib.h>
 #include "hardware/uart.h"
 #include <pico/time.h>
 
-class UARTHandler : public Agent{
+class UARTHandler : public TaskAgent{
 public:
 	UARTHandler() = default;
 	virtual ~UARTHandler();

@@ -1,7 +1,5 @@
 #ifndef MOTORCONTROLLER_H
 #define MOTORCONTROLLER_H
-#include "pico/stdlib.h"
-#include "hardware/pwm.h"
 
 
 class MotorController {

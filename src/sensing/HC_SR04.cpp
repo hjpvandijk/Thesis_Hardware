@@ -2,6 +2,8 @@
 #include "hardware/irq.h"
 #include "hardware/timer.h"
 #include "HC_SR04.h"
+#include "pico/stdlib.h"
+
 
 // Global array to store pointers to HC_SR04 instances, indexed by GPIO pin
 static HC_SR04* sensor_instances[30] = {nullptr}; // Assuming max GPIO is 29

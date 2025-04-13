@@ -1,25 +1,27 @@
 #ifndef DISTANCESENSORHANDLER_H
 #define DISTANCESENSORHANDLER_H
 
-#include "HC_SR04.h"
+#include "../TaskAgent.h"
 #include "pico/stdlib.h"
 #include "FreeRTOS.h"
 #include "task.h"
 
-#include "../Agent.h"
 #include "lwip/apps/mqtt.h"
 #include "lwip/dns.h"
 
 #include <vector>
 #include <string>
 #include "queue.h"
+#include "HC_SR04.h"
 
-class DistanceSensorHandler : public Agent{ 
+
+class DistanceSensorHandler : public TaskAgent{ 
 public:
 	DistanceSensorHandler();
 	virtual ~DistanceSensorHandler();
 
    float getDistance(int sensorIndex);
+   HC_SR04 *sensors[4];
 
 protected:
 
@@ -38,7 +40,6 @@ protected:
     
 
 private:
-    HC_SR04 *sensors[4];
     int ticks_per_second = 100;
     bool sensorsInitialized;
 

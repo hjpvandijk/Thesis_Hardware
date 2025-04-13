@@ -6,6 +6,7 @@
 #include <semphr.h>
 
 
+
 xSemaphoreHandle sensorsMutex = NULL;
 
 DistanceSensorHandler::DistanceSensorHandler() : sensorsInitialized(false) {
@@ -33,7 +34,7 @@ float DistanceSensorHandler::getDistance(int sensorIndex) {
             xSemaphoreGive(sensorsMutex);
             return -1.0f; // Return an invalid distance
         }
-        float distance = sensors[sensorIndex]->getLatestDistance();
+        float distance = sensors[sensorIndex]->getDistance();
         xSemaphoreGive(sensorsMutex);
         return distance;
     } else {

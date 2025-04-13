@@ -6,13 +6,13 @@
  *      Author: jondurrant
  */
 
-#include "Agent.h"
+#include "TaskAgent.h"
 #include <string.h>
 
 /***
  * Constructor
  */
-Agent::Agent() {
+TaskAgent::TaskAgent() {
 	// NOP
 
 }
@@ -20,7 +20,7 @@ Agent::Agent() {
 /***
  * Destructor
  */
-Agent::~Agent() {
+TaskAgent::~TaskAgent() {
 	stop();
 }
 
@@ -28,7 +28,7 @@ Agent::~Agent() {
  * Stop task
  * @return
  */
-void Agent::stop(){
+void TaskAgent::stop(){
 	if (xHandle != NULL){
 		vTaskDelete(  xHandle );
 		xHandle = NULL;
@@ -40,7 +40,7 @@ void Agent::stop(){
 * Get high water for stack
 * @return close to zero means overflow risk
 */
-unsigned int Agent::getStakHighWater(){
+unsigned int TaskAgent::getStakHighWater(){
 	if (xHandle != NULL)
 		return uxTaskGetStackHighWaterMark(xHandle);
 	else
@@ -52,7 +52,7 @@ unsigned int Agent::getStakHighWater(){
 * Get the FreeRTOS task being used
 * @return
 */
-TaskHandle_t Agent::getTask(){
+TaskHandle_t TaskAgent::getTask(){
 	return xHandle;
 }
 
@@ -62,7 +62,7 @@ TaskHandle_t Agent::getTask(){
  * @param priority - Priority to apply to process
  * @return
  */
-bool Agent::start(const char *name, UBaseType_t priority){
+bool TaskAgent::start(const char *name, UBaseType_t priority){
 	BaseType_t res;
 
 	if (strlen(name) >= MAX_NAME_LEN){
@@ -72,7 +72,7 @@ bool Agent::start(const char *name, UBaseType_t priority){
 		strcpy(pName, name);
 	}
 	res = xTaskCreate(
-			Agent::vTask,       /* Function that implements the task. */
+			TaskAgent::vTask,       /* Function that implements the task. */
 		pName,   /* Text name for the task. */
 		getMaxStackSize(),             /* Stack size in words, not bytes. */
 		( void * ) this,    /* Parameter passed into the task. */
@@ -88,8 +88,8 @@ bool Agent::start(const char *name, UBaseType_t priority){
  * Internal function used by FreeRTOS to run the task
  * @param pvParameters
  */
- void Agent::vTask( void * pvParameters ){
-	 Agent *task = (Agent *) pvParameters;
+ void TaskAgent::vTask( void * pvParameters ){
+	 TaskAgent *task = (TaskAgent *) pvParameters;
 	 if (task != NULL){
 		 task->run();
 	 }

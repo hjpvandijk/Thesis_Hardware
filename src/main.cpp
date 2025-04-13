@@ -13,6 +13,10 @@
 #include "lwip/ip4_addr.h"
 #include "lwip/sockets.h"
 #include "lwip/dns.h"
+// Undefine the conflicting macros
+#undef write
+#undef read
+#undef bind
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -32,6 +36,7 @@
 #include "motion/MotorController.h"
 #include "pins.h"
 #include "sensing/DistanceSensorHandler.h"
+#include "agent_implementation/agent.h"
 
 
 
@@ -217,44 +222,47 @@ void main_task(void* params){
 
   //Assign random agent id
 
-  // printf("Main task started\n");
+  printf("Main task started\n");
 
-  // if (WifiHelper::init()){
-  //   printf("Wifi Controller Initialised\n");
-  // } else {
-  //   printf("Failed to initialise controller\n");
-  //   return;
-  // }
-
-
-  // printf("Connecting to WiFi... %s \n", WIFI_SSID);
-
-  // if (WifiHelper::join(WIFI_SSID, WIFI_PASSWORD)){
-  //   printf("Connect to Wifi\n");
-  // }
-  // else {
-  //   printf("Failed to connect to Wifi \n");
-  // }
+  if (WifiHelper::init()){
+    printf("Wifi Controller Initialised\n");
+  } else {
+    printf("Failed to initialise controller\n");
+    return;
+  }
 
 
-  // //Print MAC Address
-  // char macStr[20];
-  // WifiHelper::getMACAddressStr(macStr);
-  // printf("MAC ADDRESS: %s\n", macStr);
+  printf("Connecting to WiFi... %s \n", WIFI_SSID);
 
-  // //Print IP Address
-  // char ipStr[20];
-  // WifiHelper::getIPAddressStr(ipStr);
-  // printf("IP ADDRESS: %s\n", ipStr);
+  if (WifiHelper::join(WIFI_SSID, WIFI_PASSWORD)){
+    printf("Connect to Wifi\n");
+  }
+  else {
+    printf("Failed to connect to Wifi \n");
+  }
+
+
+  //Print MAC Address
+  char macStr[20];
+  WifiHelper::getMACAddressStr(macStr);
+  printf("MAC ADDRESS: %s\n", macStr);
+
+  //Print IP Address
+  char ipStr[20];
+  WifiHelper::getIPAddressStr(ipStr);
+  printf("IP ADDRESS: %s\n", ipStr);
 
 
   // TestTrans testTrans;
   // testTrans.start("test", TASK_PRIORITY);
+  vTaskDelay(4000);
 
-  // MQTTClient mqttClient(uniqueID);
-  // mqttClient.start("mqtt", TASK_PRIORITY);
+  printf("Connecting to MQTT broker...\n");
+  MQTTClient mqttClient(uniqueID);
+  mqttClient.start("mqtt", TASK_PRIORITY);
 
-  // Radio radio(&mqttClient);
+  printf("Making radio\n");
+  Radio radio(&mqttClient);
 
   // UARTHandler uartHandler;
   // uartHandler.start("uart", TASK_PRIORITY);
@@ -267,18 +275,34 @@ void main_task(void* params){
 
   DistanceSensorHandler distanceSensorHandler;
   distanceSensorHandler.start("distance", TASK_PRIORITY);
-  
+  printf("creating agent\n");
 
+  Agent agent(uniqueID, 0.5, "config_yaml_data.h");
+  agent.setWifi(radio);
+  agent.startMission();
+
+  agent.setPosition(0.0, 0.0);
+
+  //Set agent hc_sr04 sensors to distancesensorhandler sensors
+  for (int i = 0; i < 4; i++) {
+    agent.distance_sensors[i] = *distanceSensorHandler.sensors[i];
+  }
+  
+  printf("starting loop\n");
   int i = 0;
   while (true){
+    // for (int i = 0; i < 4; i++) {
+    //   float distance = distanceSensorHandler.getDistance(i);
+    //   agent.setLastRangeReadings(i, distance);
+    //   printf("%d: %f\t", i, distance);
+    // }
+    // printf("\n");
 
-    // printf("0: %f:\n", distanceSensorHandler.getDistance(0));
+    printf("Main task running\n");
+    agent.doStep();
+    printf("done step\n");
 
-    for (int i = 0; i < 4; i++) {
-      float distance = distanceSensorHandler.getDistance(i);
-      printf("%d: %f\t", i, distance);
-    }
-    printf("\n");
+    
 
     // // runTimeStats();
     // std::string bMessage = "Hello World " + std::to_string(i++);
@@ -321,7 +345,7 @@ void main_task(void* params){
     //     printf("Failed to connect to Wifi \n");
     //   }
     // }
-    vTaskDelay(20);
+    vTaskDelay(1000/16);
 
 
   }

@@ -17,17 +17,17 @@
 #include "task.h"
 
 
-class Agent {
+class TaskAgent {
 public:
 	/***
 	 * Constructor
 	 */
-	Agent();
+	TaskAgent();
 
 	/***
 	 * Destructor
 	 */
-	virtual ~Agent();
+	virtual ~TaskAgent();
 
 	/***
 	 * Start the task
