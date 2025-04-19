@@ -130,8 +130,13 @@ void Agent::updateMap() {
 }
 
 // void Agent::setLastRangeReadings(int index, double new_range) {
-//     this->distance_sensors.at(index).setDistance(new_range);
+//     this->distance_sensors.at(index)->setDistance(new_range);
 // }
+
+void Agent::setDistanceSensorHandler(DistanceSensorHandler* distanceSensorHandler){
+    this->distanceSensorHandler = distanceSensorHandler;
+}
+
 
 void Agent::readDistanceSensor() {
 
@@ -372,14 +377,15 @@ quadtree::Box Agent::addObjectLocation(Coordinate objectCoordinate) const {
  * If there is no obstacle within range, add the free area between the agent and the end of the range to the quadtree
  */
 void Agent::checkForObstacles() {
-    printf("Checking for obstacles\n");
+    // printf("Checking for obstacles\n");
     bool addedObjectAtAgentLocation = false;
     for (int sensor_index = 0; sensor_index < Agent::num_sensors; sensor_index++) {
         argos::CRadians sensor_rotation = this->heading - sensor_index * argos::CRadians::PI_OVER_TWO;
-        if (this->distance_sensors[sensor_index].getDistance() < this->config.DISTANCE_SENSOR_PROXIMITY_RANGE) {
-            printf("Sensor %d: %f\n", sensor_index, this->distance_sensors[sensor_index].getDistance());
-            double opposite = argos::Sin(sensor_rotation) * this->distance_sensors[sensor_index].getDistance();
-            double adjacent = argos::Cos(sensor_rotation) * this->distance_sensors[sensor_index].getDistance();
+        auto sensorDistance = this->distanceSensorHandler->getDistance(sensor_index);
+        printf("Sensor %d: %f ", sensor_index, sensorDistance);
+        if (sensorDistance < this->config.DISTANCE_SENSOR_PROXIMITY_RANGE) {
+            double opposite = argos::Sin(sensor_rotation) * sensorDistance;
+            double adjacent = argos::Cos(sensor_rotation) * sensorDistance;
 
             Coordinate object = {this->position.x + adjacent, this->position.y + opposite};
             //If the detected object is actually another agent, add it as a free area
@@ -422,9 +428,10 @@ void Agent::checkForObstacles() {
 
 
             Coordinate end_of_ray = {this->position.x + adjacent, this->position.y + opposite};
-            if (!addedObjectAtAgentLocation) addFreeAreaBetween(this->position, end_of_ray, 1.0);
+            if (!addedObjectAtAgentLocation) addFreeAreaBetween(this->position, end_of_ray);
         }
     }
+    printf("\n");
 }
 
 /**
@@ -876,7 +883,6 @@ void Agent::sendQuadtreeToCloseAgents() {
     std::vector<std::string> quadTreeToStrings = {};
     bool sendQuadtree = false;
     double oldest_exchange = MAXFLOAT;
-
     for (const auto &agentLocationPair: this->agentLocations) {
         double lastReceivedTick = std::get<2>(agentLocationPair.second);
         //If we have received the location of this agent in the last AGENT_LOCATION_RELEVANT_DURATION_S seconds (so it is probably within communication range)
@@ -937,7 +943,8 @@ void Agent::startMission() {
 }
 
 void Agent::doStep() {
-    printf("Agent %s: %d\n", this->getId().c_str(), this->elapsed_ticks);
+    // printf("Agent %s: %d\n", this->getId().c_str(), this->elapsed_ticks);
+    // printf("resolution: %f\n", this->quadtree->getResolution());
     if (this->state != State::NO_MISSION) { //Don't do anything before mission
         broadcastMessage("C:" + this->position.toString() + "|" + this->currentBestFrontier.toString());
         sendQuadtreeToCloseAgents();
@@ -977,9 +984,7 @@ void Agent::doStep() {
     } else { //Exploring or returning
         if (this->elapsed_ticks >= this->ticks_per_second) { //Wait one second before starting, allowing initial communication
             checkForObstacles();
-
             calculateNextPosition();
-
             //If there is no force vector, do not move
             if (this->force_vector == argos::CVector2{0, 0}) this->differential_drive.stop();
             else {
@@ -1042,7 +1047,7 @@ void Agent::checkMessages() {
 }
 
 /**
- * Get the target id from a message
+ * Get the target id from a messaged
  * @param message
  * @return
  */
@@ -1141,10 +1146,14 @@ argos::CVector2 vector2FromString(std::string str) {
 void Agent::parseMessages() {
     std::map<std::string, int> agentQuadtreeBytesReceivedCounter;
     for (const std::string &message: this->messages) {
+        std::string senderId = getIdFromMessage(message);
+        if (senderId == this->getId()){
+            continue; //If the message is from this agent, skip it
+        }         
         std::string targetId = getTargetIdFromMessage(message);
         if (targetId != "A" && targetId != getId())
             continue; //If the message is not broadcast to all agents and not for this agent, skip it
-        std::string senderId = getIdFromMessage(message);
+
         std::string messageContent = message.substr(message.find(']') + 1);
         if (messageContent.at(0) == 'C') {
             auto splitStrings = splitString(messageContent.substr(2), "|");
@@ -1262,7 +1271,7 @@ void Agent::checkMissionEnd() {
 
 void Agent::loadConfig(const std::string& config_file, double rootbox_size) {
     // YAML::Node config_yaml = YAML::LoadFile(config_file);
-    YAML::Node config_yaml = YAML::Load(reinterpret_cast<const char*>(_home_hugo_Documents_pico2w_exp_main_BICLARE_Hardware_src_agent_implementation_configs_fsr_mfr_mrl_AAVFIXm1o5_end_time_400_noise_0_wifi_range_99999_message_loss_probability_0_frontier_search_radius_5_max_frontier_regions_20_evaporation_time_100_max_route_length_30_yaml));
+    YAML::Node config_yaml = YAML::Load(reinterpret_cast<const char*>(_home_hugo_Documents_pico2w_exp_main_BICLARE_Hardware_src_agent_implementation_configs_hardware_config_yaml));
     this->config.MISSION_END_TIME_S = config_yaml["mission"]["end_time"].as<float>();
     this->config.MISSION_END_BATTERY_LEVEL = config_yaml["mission"]["end_battery_level"].as<float>();
 

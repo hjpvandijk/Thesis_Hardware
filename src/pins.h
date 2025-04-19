@@ -13,11 +13,11 @@
 #define RIGHT_ENCODER 2
 
 //HC-SR04 sensors
-#define TRIG_FORWARD 7
-#define ECHO_FORWARD 6
-#define TRIG_LEFT 13
-#define ECHO_LEFT 12
-#define TRIG_RIGHT 9
-#define ECHO_RIGHT 8
+#define TRIG_FORWARD 9
+#define ECHO_FORWARD 8
+#define TRIG_LEFT 7
+#define ECHO_LEFT 6
+#define TRIG_RIGHT 13
+#define ECHO_RIGHT 12
 #define TRIG_BACK 15
 #define ECHO_BACK 14

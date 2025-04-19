@@ -30,8 +30,39 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 set(PICO_CXX_ENABLE_EXCEPTIONS 1)
 
+# Set optimization flagsp
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
+endif()
+
+# Release build optimizations
+# set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -flto")
+# set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -flto")
+
+#flto may be too aggressive for some libraries
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -Os -DNDEBUG")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Os -DNDEBUG")
+
+# # Debug build options (lower optimization, more debugging info)
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Og -g3")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Og -g3")
+
+
+# Linker optimization
+add_link_options(
+    -Wl,--print-memory-usage      # Print memory usage summary during build
+    -Wl,-Map=output.map  # Create a map file for memory analysis
+)
+
+# Print the build type
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+
+# # Print the build type
+# message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+
 # Initialize the SDK
 pico_sdk_init()
+
 
 include(lwip_import.cmake)
 
@@ -46,9 +77,9 @@ include(${CMAKE_CURRENT_LIST_DIR}/port/FreeRTOS-Kernel/freertos_config.cmake)
 include_directories("${FREERTOS_CONFIG_FILE_DIRECTORY}") 
 include(FreeRTOS_Kernel_import.cmake)
 
-set(COREHTTP_PATH "${CMAKE_CURRENT_LIST_DIR}/lib/RPIPicoWWSClient-RTOS/lib/coreHTTP")# CACHE STRING "Course Common Lib")
-set(COREHTTP_PORT "${CMAKE_CURRENT_LIST_DIR}/port/coreHTTP/") # CACHE STRING "Course Common Lib")
-include(coreHTTP.cmake)
+# set(COREHTTP_PATH "${CMAKE_CURRENT_LIST_DIR}/lib/RPIPicoWWSClient-RTOS/lib/coreHTTP")# CACHE STRING "Course Common Lib")
+# set(COREHTTP_PORT "${CMAKE_CURRENT_LIST_DIR}/port/coreHTTP/") # CACHE STRING "Course Common Lib")
+# include(coreHTTP.cmake)
 
 # SET(URILIB_PATH "${CMAKE_CURRENT_LIST_DIR}/lib/RPIPicoWWSClient-RTOS/lib/uri-library") # CACHE STRING "Common Lib")
 # include(urilib.cmake)
@@ -60,8 +91,8 @@ include(coreHTTP.cmake)
 # include(tiny-json.cmake)
 
 # set(WOLFSSL_DIR "${CMAKE_CURRENT_LIST_DIR}/lib/RPIPicoWWSClient-RTOS/lib/wolfssl") # CACHE STRING "Course Common Lib")
-set(WOLFSSL_DIR "${CMAKE_CURRENT_LIST_DIR}/lib/wolfssl") # CACHE STRING "Course Common Lib")
-include("wolfssl_import.cmake")
+# set(WOLFSSL_DIR "${CMAKE_CURRENT_LIST_DIR}/lib/wolfssl") # CACHE STRING "Course Common Lib")
+# include("wolfssl_import.cmake")
 
 # set(PICOW_WSCLIENT_PATH "${CMAKE_CURRENT_LIST_DIR}/lib/RPIPicoWWSClient-RTOS")# CACHE STRING "Course Common Lib")
 # include("PicoW_WSClient.cmake")

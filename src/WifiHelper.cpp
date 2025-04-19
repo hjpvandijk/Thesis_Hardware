@@ -13,7 +13,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-#include "lwip/apps/sntp.h"
+// #include "lwip/apps/sntp.h"
 
 WifiHelper::WifiHelper() {
 	// NOP
@@ -44,9 +44,9 @@ bool WifiHelper::init(){
 }
 
 bool WifiHelper::deInit(){
-	if (sntp_enabled()){
-		sntp_stop();
-	}
+	// if (sntp_enabled()){
+	// 	sntp_stop();
+	// }
 	cyw43_arch_deinit();
 	return true;
 }
@@ -166,7 +166,9 @@ bool WifiHelper::getMACAddressStr(char *macStr) {
  * @return true if joined.
  */
 bool WifiHelper::isJoined(){
+	cyw43_arch_lwip_begin();
 	int res = cyw43_wifi_link_status(&cyw43_state, CYW43_ITF_STA);
+	cyw43_arch_lwip_end();
 	return (res >= 0);
 }
 
@@ -179,22 +181,22 @@ void WifiHelper::sntpSetTimezone(int8_t offsetHours, int8_t offsetMinutes){
 	WifiHelper::sntpTimezoneMinutesOffset = (offsetHours * 60) + offsetMinutes;
 }
 
-/***
- * Add SNTP server - can call to add multiple servers
- * @param server - string name of server. Should remain in scope
- */
-void WifiHelper::sntpAddServer(const char *server){
-	sntp_setservername(WifiHelper::sntpServerCount++, server);
-}
+// /***
+//  * Add SNTP server - can call to add multiple servers
+//  * @param server - string name of server. Should remain in scope
+//  */
+// void WifiHelper::sntpAddServer(const char *server){
+// 	sntp_setservername(WifiHelper::sntpServerCount++, server);
+// }
 
-/***
- * Start syncing Pico time with SNTP
- */
-void WifiHelper::sntpStartSync(){
-	//rtc_init();
-	sntp_setoperatingmode(SNTP_OPMODE_POLL);
-	sntp_init();
-}
+// /***
+//  * Start syncing Pico time with SNTP
+//  */
+// void WifiHelper::sntpStartSync(){
+// 	//rtc_init();
+// 	sntp_setoperatingmode(SNTP_OPMODE_POLL);
+// 	sntp_init();
+// }
 
 /***
  * Call back function used to set the RTC with the SNTP response

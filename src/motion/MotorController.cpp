@@ -38,6 +38,12 @@ MotorController::MotorController(){
     pwm_set_enabled(slice_left_1B, true);
     pwm_set_enabled(slice_right_1A, true);
     pwm_set_enabled(slice_right_1B, true);
+
+    // Set initial speed to 0
+    currentSpeed = 0;
+    pwmSpeed = 0;
+    setLeftMotorSpeed(0);
+    setRightMotorSpeed(0);
     
 }
 

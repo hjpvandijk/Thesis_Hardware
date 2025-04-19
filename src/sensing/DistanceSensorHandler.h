@@ -40,7 +40,7 @@ protected:
     
 
 private:
-    int ticks_per_second = 100;
+    int ticks_per_second = 20;
     bool sensorsInitialized;
 
 };

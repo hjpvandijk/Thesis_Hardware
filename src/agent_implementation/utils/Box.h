@@ -15,7 +15,12 @@ namespace quadtree {
         double size; // Must be positive
 //    double height; // Must be positive
 
-        constexpr Box(double Left = 0, double Top = 0, double Size = 0) noexcept:
+        Box() noexcept:
+                left(0), top(0), size(0) {
+
+        }
+
+        constexpr Box(double Left, double Top, double Size) noexcept:
                 left(Left), top(Top), size(Size) {
 
         }

@@ -10,6 +10,7 @@ void Radio::config(float wifiTransferSpeed_Mbps, float maxJitter_ms, float messa
 
 void Radio::broadcast_message(std::string &messagePrependedWithId) const{
     messagePrependedWithId.insert(0, "<A>"); //Prepend with A
+    // printf("Broadcasting message: %s\n", messagePrependedWithId.c_str());
     client->addMessageToSend(messagePrependedWithId);
 }
 
@@ -19,5 +20,7 @@ void Radio::send_message(std::string &messagePrependedWithId, const std::string 
 }
 
 void Radio::receive_messages(std::vector<std::string> &messages, double current_time_s){
+    messages.clear();
     client->getIncomingMessages(messages);
+    // printf("Received %d messages\n", messages.size());
 }

@@ -390,7 +390,6 @@ argos::CVector2 ForceVectorCalculator::calculateUnexploredFrontierVector(Agent* 
     // Initialize an empty vector of vectors to store frontier regions
     std::vector<std::vector<std::pair<quadtree::Box, double>>> frontierRegions = {};
 
-//    mergeAdjacentFrontiers(frontiers, frontierRegions, agent->config.MAX_FRONTIER_REGIONS);
 
 
 //// Iterate over each frontier box to merge adjacent ones into regions
@@ -420,9 +419,9 @@ argos::CVector2 ForceVectorCalculator::calculateUnexploredFrontierVector(Agent* 
         if (!added) {
             frontierRegions.push_back({{frontierbox, frontierpheromone}});
         }
+
     }
     truncateMaxRegions(frontierRegions, agent->config.MAX_FRONTIER_REGIONS);
-
 
     //Add the frontier region from the last best frontier to the options, if it is now out of range. To prevent unneccesary switching
     //If we haven't reached the frontier yet, add the region to the list of frontier regions
@@ -430,6 +429,7 @@ argos::CVector2 ForceVectorCalculator::calculateUnexploredFrontierVector(Agent* 
         if (!agent->bestFrontierRegionBoxes.empty()) frontierRegions.push_back(agent->bestFrontierRegionBoxes);
 //        argos::LOG << "[" << agent->id << "] Found " << "Adding previous best frontier region to the list of frontier regions" << std::endl;
     }
+
 
     agent->current_frontier_regions = frontierRegions;
 //    argos::LOG << "[" << agent->id << "] Found " << frontierRegions.size() << " frontier regions" << std::endl;
@@ -450,7 +450,6 @@ argos::CVector2 ForceVectorCalculator::calculateUnexploredFrontierVector(Agent* 
 //                    `                           region,                       s certainties, distance, reach time, reach battery
     std::map<Coordinate, std::tuple<std::vector<std::pair<quadtree::Box, double>>, double, double, double, double>> region_summed_certainties_and_reach_dist_time_battery;
     std::map<Coordinate, std::pair<std::vector<std::pair<Coordinate, Coordinate>>, int>> region_routes; //Route, wall following direction
-
     for (const auto &region: frontierRegions) {
         double sumX = 0;
         double sumY = 0;
@@ -462,6 +461,8 @@ argos::CVector2 ForceVectorCalculator::calculateUnexploredFrontierVector(Agent* 
         double region_repulsion = 0;
         for (auto [box, pheromone]: region) {
             double cellsInBox = box.getSize() / agent->quadtree->getResolution();
+            // printf("Frontier region box size: %f, %f, %f, %f\n", box.getCenter().x, box.getCenter().y, box.getSize(), pheromone);
+            if (cellsInBox != 1) printf("Box size is not 1: %f, %f, %f, %f\n", box.getCenter().x, box.getCenter().y, box.getSize(), pheromone);
             assert(cellsInBox == 1);
             sumX += box.getCenter().x *
                     cellsInBox; //Take the box size into account (parent nodes will contain the info about all its children)
@@ -830,11 +831,11 @@ bool ForceVectorCalculator::calculateObjectAvoidanceAngle(Agent* agent, argos::C
     }
 
     //Block angles according to the distance sensors
-    for (int i = 0; i < agent->distance_sensors.size(); i++) {
+    for (int i = 0; i < 4; i++) {
         //Only handle the forward sensor
         if (i != 0) continue;
         argos::CRadians sensor_rotation = agent->heading - i * argos::CRadians::PI_OVER_TWO;
-        if (agent->distance_sensors[i].getDistance() < agent->config.OBJECT_AVOIDANCE_RADIUS/2) {
+        if (agent->distanceSensorHandler->getDistance(i) < agent->config.OBJECT_AVOIDANCE_RADIUS/2) {
             //Erase all angles 90 degrees to the left and right of the sensor
             //12.5% to the left
             argos::CDegrees minAngle = argos::CDegrees(int(ToDegrees(sensor_rotation - argos::CRadians::PI_OVER_FOUR).GetValue())).SignedNormalize();
@@ -896,9 +897,9 @@ bool ForceVectorCalculator::calculateObjectAvoidanceAngle(Agent* agent, argos::C
 
     //If there are no free angles, see if there are any sensors that have no close intersection.
     if (freeAngles.empty()) {
-        for (int i = 0; i < agent->distance_sensors.size(); i++) {
+        for (int i = 0; i < 4; i++) {
             argos::CRadians sensor_rotation = agent->heading - i * argos::CRadians::PI_OVER_TWO;
-            if (agent->distance_sensors[i].getDistance() > agent->config.OBJECT_AVOIDANCE_RADIUS) {
+            if (agent->distanceSensorHandler->getDistance(i) > agent->config.OBJECT_AVOIDANCE_RADIUS) {
                 argos::CDegrees minAngle = argos::CDegrees(
                         int(ToDegrees(sensor_rotation - argos::CRadians::PI / 18.0).GetValue())).SignedNormalize();
                 argos::CDegrees maxAngle = argos::CDegrees(int(ToDegrees(

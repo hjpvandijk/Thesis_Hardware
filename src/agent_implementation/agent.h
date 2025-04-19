@@ -43,7 +43,9 @@
 
 #include "../motion/DifferentialDrive.h"
 #include "../mqtt/radio.h"
-#include "../sensing/HC_SR04.h"
+// #include "../sensing/HC_SR04.h"
+#include "../sensing/DistanceSensorHandler.h"
+
 
 class Agent {
 public:
@@ -61,7 +63,9 @@ public:
 
     //Distance sensors
     static constexpr double num_sensors = 4;
-    std::array<HC_SR04, static_cast<int>(num_sensors)> distance_sensors{};
+    // std::array<HC_SR04*, static_cast<int>(num_sensors)> distance_sensors{};
+    DistanceSensorHandler* distanceSensorHandler = nullptr;
+
 
     //Time synchronizer between agents
     TimeSynchronizer timeSynchronizer;
@@ -238,7 +242,8 @@ public:
 
     void updateMap();
 
-    void setLastRangeReadings(int index, double new_range);
+    // void setLastRangeReadings(int index, double new_range);
+    void setDistanceSensorHandler(DistanceSensorHandler* distanceSensorHandler);
 
     void readDistanceSensor();
 

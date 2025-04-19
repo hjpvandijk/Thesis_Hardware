@@ -11,7 +11,7 @@ DifferentialDrive::DifferentialDrive(){
 
     //TODO: Init RPMs
 
-    // this->motorController = MotorController();
+    this->motorController = MotorController();
 
     //TODO: Init PID
 }
@@ -31,14 +31,14 @@ DifferentialDrive::DifferentialDrive(float max_speed_straight,
 
     //TODO: Init RPMs
 
-    // this->motorController = MotorController();
+    this->motorController = MotorController();
 
     //TODO: Init PID
 }
 
 void DifferentialDrive::setSpeed(float speed_right, float speed_left) {
-    motorController.setRightMotorSpeed(speed_right);
-    motorController.setLeftMotorSpeed(speed_left);
+    // motorController.setRightMotorSpeed(speed_right);
+    // motorController.setLeftMotorSpeed(speed_left);
 }
 
 void DifferentialDrive::forward() {

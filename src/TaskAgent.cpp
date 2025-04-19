@@ -8,6 +8,7 @@
 
 #include "TaskAgent.h"
 #include <string.h>
+#include <stdio.h>
 
 /***
  * Constructor
@@ -79,6 +80,12 @@ bool TaskAgent::start(const char *name, UBaseType_t priority){
 		priority,/* Priority at which the task is created. */
 		&xHandle
 	);
+
+	if (res != pdPASS){
+		printf("Failed to create task %s, error %d\n", pName, res);
+	} else {
+		printf("Created task %s\n", pName);
+	}
 	return (res == pdPASS);
 }
 

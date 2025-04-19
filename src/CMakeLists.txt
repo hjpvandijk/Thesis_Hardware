@@ -1,8 +1,8 @@
 
 add_custom_command(
     OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/config_yaml_data.h
-    COMMAND xxd -i ${CMAKE_CURRENT_SOURCE_DIR}/agent_implementation/configs/fsr_mfr_mrl/AAVFIXm1o5_end_time_400_noise_0_wifi_range_99999_message_loss_probability_0_frontier_search_radius_5_max_frontier_regions_20_evaporation_time_100_max_route_length_30.yaml > ${CMAKE_CURRENT_BINARY_DIR}/config_yaml_data.h
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/agent_implementation/configs/fsr_mfr_mrl/AAVFIXm1o5_end_time_400_noise_0_wifi_range_99999_message_loss_probability_0_frontier_search_radius_5_max_frontier_regions_20_evaporation_time_100_max_route_length_30.yaml
+    COMMAND xxd -i ${CMAKE_CURRENT_SOURCE_DIR}/agent_implementation/configs/hardware_config.yaml > ${CMAKE_CURRENT_BINARY_DIR}/config_yaml_data.h
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/agent_implementation/configs/hardware_config.yaml
     COMMENT "Generating config_yaml_data.h"
 )
 
@@ -10,11 +10,12 @@ add_executable(${NAME}
         main.cpp
         pins.h
         WifiHelper.cpp
+        AgentExecutor.cpp
         # mqtt/MQTTEcho.c
         # mqtt/TestTrans.cpp
         TaskAgent.cpp
         mqtt/TCPTransport.cpp
-        mqtt/TLSTransBlock.cpp
+        # mqtt/TLSTransBlock.cpp
         mqtt/Transport.cpp
         mqtt/radio.cpp
         mqtt/MQTTCLient.cpp
@@ -42,6 +43,35 @@ add_executable(${NAME}
         agent_implementation/utils/coordinate.cpp
         ${CMAKE_CURRENT_BINARY_DIR}/config_yaml_data.h
         )
+
+# In src/CMakeLists.txt
+target_compile_definitions(${NAME} PRIVATE
+    PICO_COPY_TO_RAM=0            # Don't copy code to RAM by default
+)
+
+# For constant data that doesn't change
+# # pico_set_binary_type(${NAME} copy_to_ram)
+# pico_set_linker_script(${NAME} ${CMAKE_CURRENT_LIST_DIR}/custom_linker_script.ld)
+
+# Memory optimization flags
+set(MY_TARGET_MEMORY_OPTIMIZATION_FLAGS
+    # -fno-exceptions                # Disable C++ exceptions to save space
+    -ffunction-sections            # Place each function in its own section
+    -fdata-sections                # Place each data item in its own section
+    -finline-small-functions       # Inline small functions to reduce call overhead
+    -fno-unwind-tables             # Disable generation of unwind tables
+)
+
+# Apply to all targets
+target_compile_options(${NAME} PRIVATE ${MY_TARGET_MEMORY_OPTIMIZATION_FLAGS})
+
+# target_link_options(${NAME} PRIVATE
+#     -Wl,--gc-sections              # Remove unused sections
+#     -Wl,--print-memory-usage  # Shows memory usage after linking
+# )
+
+# Create map file for memory analysis
+set_target_properties(${NAME} PROPERTIES LINK_FLAGS "-Wl,-Map=${CMAKE_BINARY_DIR}/${NAME}.map")
 
 target_sources(${NAME} PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/config_yaml_data.h) # Change is here.
 target_include_directories(${NAME} PRIVATE ${CMAKE_CURRENT_BINARY_DIR}) # Add this line!
@@ -96,11 +126,11 @@ target_link_libraries(${NAME}
     LWIP_PORT
     pico_cyw43_arch_lwip_sys_freertos
     # paho_embedded_mqtt
-     coreHTTP
+    #  coreHTTP
     #  urilib
     #  json_maker
     #  tiny_json
-     wolfssl
+    #  wolfssl
     #  picow_wsclient
 
 	)
@@ -144,4 +174,5 @@ pico_enable_stdio_uart(${NAME} 1)
 target_compile_definitions(${NAME} PRIVATE
     PICO_DEFAULT_UART_RX_PIN=17
     PICO_DEFAULT_UART_TX_PIN=16
+    LWIP_TUNE
 )

@@ -58,17 +58,19 @@ void DistanceSensorHandler::run() {
     while (true) {
         if (xSemaphoreTake(sensorsMutex, portMAX_DELAY) == pdTRUE) {
                 float distance = sensors[currentSensor]->measureDistance();
+                // if (currentSensor==1){
+                    // printf("Distance from sensor %d: %f\n", currentSensor, distance);
+                // }
                 currentSensor = (currentSensor + 1) % 4; // Cycle through sensors
-
             xSemaphoreGive(sensorsMutex);
         } else {
             printf("Failed to acquire mutex for measurement\n");
             // Handle the failure to acquire the mutex (e.g., log an error)
         }
-        vTaskDelay(1000 / ticks_per_second); // Delay for the specified ticks per second
+        vTaskDelay((1000 / ticks_per_second)/portTICK_PERIOD_MS); // Delay for the specified ticks per second
     }
 }
 
 configSTACK_DEPTH_TYPE DistanceSensorHandler::getMaxStackSize() {
-    return 1000;
+    return 200;
 }

@@ -8,11 +8,21 @@
 #include <pico/stdlib.h>
 #include "hardware/uart.h"
 #include <pico/time.h>
+#include "../agent_implementation/utils/coordinate.h"
+#include "angles.h"
 
 class UARTHandler : public TaskAgent{
 public:
 	UARTHandler() = default;
 	virtual ~UARTHandler();
+
+	Coordinate getPosition() const {
+		return this->position;
+	}
+
+	argos::CRadians getHeading() const {
+		return this->heading;
+	}
    
 
 protected:
@@ -32,6 +42,8 @@ protected:
     
 
 private:
+	Coordinate position = {0, 0};
+	argos::CRadians heading = argos::CRadians::ZERO;
    
 
 };
