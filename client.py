@@ -41,6 +41,7 @@ map_data = {}  # (x, y) in cell coordinates, value: 0 (free), 1 (obstacle), None
 agent_velocities = {}
 elapsed_ticks = 0
 ticks_per_second = 10
+current_time = 0.0
 
 @dataclass
 class Box:
@@ -69,6 +70,45 @@ def vector2_from_string(vector_string):
     """Calculates the probability from a log-odds ratio."""
 def P(l):
     return math.exp(l) / (1 + math.exp(l))
+
+# double calculatePheromone(double visitedTime, double PConfidence, double currentTime) const {
+#             //If the visited time is the same as the current time, the time factor will be 1, so the pheromone will be the same as the sensor confidence.
+#             //If the visited time is greater than the current time, an agent's steps went overtime or oscillator drift occurred as a cell cannot have a visited time that is in the future.
+#             // So we just take time factor 1 here.
+#             if (visitedTime >= currentTime) return PConfidence;
+# //            double timeProbability = 1.0 - std::min((currentTime - visitedTime) / EVAPORATION_TIME_S, (1.0 - EVAPORATED_PHEROMONE_FACTOR));
+#             double lambda = - std::log(this->EVAPORATED_PHEROMONE_FACTOR) / this->EVAPORATION_TIME_S; //Evaporate to EVAPORATED_PHEROMONE_FACTOR after EVAPORATION_TIME_S
+#             double timeProbability = exp(-lambda * (currentTime - visitedTime)); //Exponential decay
+#             double pheromone = timeProbability * (PConfidence - 0.5) + 0.5;
+#             //This makes sure that a value once set to occupied or free, will not be changed to ambiguous again due to evaporation.
+#             //So we assume that if a cell is occupied, it will stay that way, albeit with a lower confidence.
+#             //So the asymptote is P_OCCUPIED_THRESHOLD instead of 0.5;
+#             if (PConfidence <= P_OCCUPIED_THRESHOLD) pheromone = timeProbability * (PConfidence - P_OCCUPIED_THRESHOLD) + P_OCCUPIED_THRESHOLD;
+#             //But if a cell is free, it can become ambiguous again, as new obstacles can appear.
+# //            if (PConfidence >= P_FREE) pheromone = timeProbability * (PConfidence - P_FREE) + P_FREE;
+#             assert(pheromone >= 0.0 && pheromone <= 1.0 && "Pheromone should be between 0 and 1");
+#             return pheromone;
+#         }
+
+def calculate_pheromone(visited_time, p_confidence, current_time):
+    """
+    Calculates the pheromone value based on visited time, confidence, and current time.
+    This function is a placeholder and should be replaced with the actual logic.
+    """
+    # If the visited time is the same as the current time, the time factor will be 1,
+    # so the pheromone will be the same as the sensor confidence.
+    # If the visited time is greater than the current time, an agent's steps went overtime
+    # or oscillator drift occurred as a cell cannot have a visited time that is in the future.
+    # So we just take time factor 1 here.
+    if visited_time >= current_time:
+        return p_confidence
+
+    lambda_ = -math.log(0.5) / 10  # Placeholder for EVAPORATION_TIME_S
+    time_probability = math.exp(-lambda_ * (current_time - visited_time))  # Exponential decay
+    pheromone = time_probability * (p_confidence - 0.5) + 0.5
+    assert pheromone >= 0.0 and pheromone <= 1.0, "Pheromone should be between 0 and 1"
+    return pheromone
+
 
 def quadnode_from_string(node_string):
     """Parses a quadtree node string "x;y:confidence@timestamp"."""
@@ -148,12 +188,19 @@ def draw_grid():
     pygame.draw.line(screen, CENTERLINE_COLOR, (MAP_WIDTH_METERS*PIXELS_PER_METER // 2, 0), (MAP_WIDTH_METERS*PIXELS_PER_METER // 2, int(MAP_HEIGHT_METERS*PIXELS_PER_METER)))
     pygame.draw.line(screen, CENTERLINE_COLOR, (0, MAP_HEIGHT_METERS*PIXELS_PER_METER // 2), (int(MAP_WIDTH_METERS*PIXELS_PER_METER), MAP_HEIGHT_METERS*PIXELS_PER_METER // 2))
 
+    #Draw lines every meter
+    for i in range(-int(MAP_WIDTH_METERS/2), int(MAP_WIDTH_METERS/2)+1):
+        pygame.draw.line(screen, CENTERLINE_COLOR, (map_to_display_coordinates(i, 0)), (map_to_display_coordinates(i, MAP_HEIGHT_METERS)))
+        pygame.draw.line(screen, CENTERLINE_COLOR, (map_to_display_coordinates(0, i)), (map_to_display_coordinates(MAP_WIDTH_METERS, i)))
+
+    
+
 
 
 def draw_map():
     """Draws the map on the Pygame screen based on the map_data."""
     map_data_copy = dict(map_data)
-    for (cell_x, cell_y), confidence in map_data_copy.items():
+    for (cell_x, cell_y), pheromone in map_data_copy.items():
         for i in range(7):
             s = MAP_WIDTH_METERS / 2**i
             if cell_x % s == 0 and cell_y % s == 0:
@@ -165,9 +212,9 @@ def draw_map():
             display_x - int(this_cell_size*PIXELS_PER_METER // 2), display_y - int(this_cell_size*PIXELS_PER_METER) // 2, int(this_cell_size*PIXELS_PER_METER), int(this_cell_size*PIXELS_PER_METER)
         )  # Center the rect
         # print(f"confidence: {confidence}")
-        certainty = (confidence-0.5) * 2
-        color = (255*(1-certainty), 255*(certainty), 0) if certainty > 0 else (0, 255*(-certainty), 255*(1+certainty))
-        # print(f"Cell: {cell_x}, {cell_y} -> {display_x}, {display_y} -> {color}")
+        certainty = (pheromone-0.5) * 2
+        color = (255*(1-certainty), 255*(certainty), 0) if certainty > 0 else (255*(-certainty), 255*(1+certainty), 0)
+        print(f"Pheromone: {pheromone} -> {color}")
         pygame.draw.rect(screen, color, rect)
         #Draw dark green outline of rectangle
         pygame.draw.rect(screen, (0, 100, 0), rect, 1)
@@ -193,8 +240,8 @@ def draw_agent(x_m, y_m, x_t, y_t, heading):
         target_display_x, target_display_y = map_to_display_coordinates(x_t, y_t)
         pygame.draw.circle(screen, (0, 0, 255), (target_display_x, target_display_y), 5)
 
-    heading_x = display_x + 25 * math.cos(angle_rad)
-    heading_y = display_y + 25 * math.sin(angle_rad)
+    heading_x = display_x + 2*PIXELS_PER_METER * math.cos(angle_rad)
+    heading_y = display_y + 2*PIXELS_PER_METER * math.sin(angle_rad)
     pygame.draw.line(screen, HEADING_COLOR, (display_x, display_y), (heading_x, heading_y), 2)
 
 def draw_agent_path():
@@ -207,7 +254,7 @@ def draw_agent_path():
 
 def on_message(client, userdata, message):
     """Callback function for incoming MQTT messages."""
-    global agent_location, agent_target, agent_heading, map_data, elapsed_ticks, agent_velocities
+    global agent_location, agent_target, agent_heading, map_data, elapsed_ticks, agent_velocities, current_time
     payload = message.payload.decode("utf-8")
     try:
         sender_id = get_id_from_message(payload)
@@ -244,16 +291,19 @@ def on_message(client, userdata, message):
 
         elif message_content.startswith("M:"):
             try:
+                # map_data.clear()
                 chunks = message_content[2:].split("|")
                 for chunk in chunks:
                     if chunk:
                         x, y, confidence, timestamp = quadnode_from_string(chunk)
+                        current_time = max(current_time, timestamp)
                         # x, y are cell coordinates.
                         # if confidence > 0.5:
                         #     map_data[(x, y)] = 1
                         # elif confidence < -0.5:
                         #     map_data[(x, y)] = 0
-                        map_data[(x, y)] = confidence
+                        pheromone = calculate_pheromone(timestamp, confidence, current_time)
+                        map_data[(x, y)] = pheromone
             except Exception as e:
                 #print stacktrace
                 traceback.print_exc()
@@ -283,7 +333,7 @@ def cleanup_pygame():
 
 def main():
     """Main function to initialize MQTT client and Pygame."""
-    global agent_location, agent_target, agent_heading, agent_path, elapsed_ticks, ticks_per_second
+    global agent_location, agent_target, agent_heading, agent_path, elapsed_ticks, ticks_per_second, current_time
 
     client = mqtt.Client()
     client.on_message = on_message

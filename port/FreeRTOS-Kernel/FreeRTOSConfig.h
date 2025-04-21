@@ -70,7 +70,7 @@
 #define configMESSAGE_BUFFER_LENGTH_TYPE        size_t
 
 /* Memory allocation related definitions. */
-#define configSUPPORT_STATIC_ALLOCATION         1
+#define configSUPPORT_STATIC_ALLOCATION         0 //1
 #define configSUPPORT_DYNAMIC_ALLOCATION        1
 #define configTOTAL_HEAP_SIZE                   (300*1024)//(128*1024)
 #define configAPPLICATION_ALLOCATED_HEAP        0
@@ -103,12 +103,14 @@
 */
 
 // Single Core
-#define configNUMBER_OF_CORES                       	1
+#define configNUMBER_OF_CORES                       	2
 #define configTICK_CORE                         					0
-#define configRUN_MULTIPLE_PRIORITIES         0
-#define configUSE_CORE_AFFINITY                 		0
+#define configRUN_MULTIPLE_PRIORITIES         1
+#define configUSE_CORE_AFFINITY                 		1
 #define configNUM_CORES 											configNUMBER_OF_CORES  //SDK still relies on this
 
+//Needed for multi core
+#define configUSE_PASSIVE_IDLE_HOOK 0
 
 /* RP2040 specific */
 #define configSUPPORT_PICO_SYNC_INTEROP         1

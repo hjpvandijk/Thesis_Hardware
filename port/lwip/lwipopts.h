@@ -158,7 +158,7 @@ void sntpSetTimeSec(uint32_t sec);
 
 //MQTT
 #define MQTT_OUTPUT_RINGBUF_SIZE   2048  // Or larger, depending on your messages
-
+#define MQTT_REQ_MAX_IN_FLIGHT 8
 
 
 #endif /* __LWIPOPTS_H__ */

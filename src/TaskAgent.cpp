@@ -63,7 +63,7 @@ TaskHandle_t TaskAgent::getTask(){
  * @param priority - Priority to apply to process
  * @return
  */
-bool TaskAgent::start(const char *name, UBaseType_t priority){
+bool TaskAgent::start(const char *name, UBaseType_t priority, int coreID){
 	BaseType_t res;
 
 	if (strlen(name) >= MAX_NAME_LEN){
@@ -72,14 +72,42 @@ bool TaskAgent::start(const char *name, UBaseType_t priority){
 	} else {
 		strcpy(pName, name);
 	}
-	res = xTaskCreate(
-			TaskAgent::vTask,       /* Function that implements the task. */
-		pName,   /* Text name for the task. */
-		getMaxStackSize(),             /* Stack size in words, not bytes. */
-		( void * ) this,    /* Parameter passed into the task. */
-		priority,/* Priority at which the task is created. */
-		&xHandle
-	);
+	if (coreID == -1){
+		res = xTaskCreate(
+				TaskAgent::vTask,       /* Function that implements the task. */
+			pName,   /* Text name for the task. */
+			getMaxStackSize(),             /* Stack size in words, not bytes. */
+			( void * ) this,    /* Parameter passed into the task. */
+			priority,/* Priority at which the task is created. */
+			&xHandle
+		);
+	} else {
+		if (coreID == 0){
+			res = xTaskCreateAffinitySet(
+				TaskAgent::vTask,       /* Function that implements the task. */
+				pName,   /* Text name for the task. */
+				getMaxStackSize(),             /* Stack size in words, not bytes. */
+				( void * ) this,    /* Parameter passed into the task. */
+				priority,/* Priority at which the task is created. */
+				0x01,
+				&xHandle
+			);
+		} else if (coreID == 1){
+			res = xTaskCreateAffinitySet(
+				TaskAgent::vTask,       /* Function that implements the task. */
+				pName,   /* Text name for the task. */
+				getMaxStackSize(),             /* Stack size in words, not bytes. */
+				( void * ) this,    /* Parameter passed into the task. */
+				priority,/* Priority at which the task is created. */
+				0x02,
+				&xHandle
+			);
+		
+		} else{
+			printf("Invalid core ID %d\n", coreID);
+			res = pdFAIL;
+		}
+	}
 
 	if (res != pdPASS){
 		printf("Failed to create task %s, error %d\n", pName, res);

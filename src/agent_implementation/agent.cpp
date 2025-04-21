@@ -382,7 +382,7 @@ void Agent::checkForObstacles() {
     for (int sensor_index = 0; sensor_index < Agent::num_sensors; sensor_index++) {
         argos::CRadians sensor_rotation = this->heading - sensor_index * argos::CRadians::PI_OVER_TWO;
         auto sensorDistance = this->distanceSensorHandler->getDistance(sensor_index);
-        printf("Sensor %d: %f ", sensor_index, sensorDistance);
+        // printf("Sensor %d: %f ", sensor_index, sensorDistance);
         if (sensorDistance < this->config.DISTANCE_SENSOR_PROXIMITY_RANGE) {
             double opposite = argos::Sin(sensor_rotation) * sensorDistance;
             double adjacent = argos::Cos(sensor_rotation) * sensorDistance;
@@ -431,7 +431,7 @@ void Agent::checkForObstacles() {
             if (!addedObjectAtAgentLocation) addFreeAreaBetween(this->position, end_of_ray);
         }
     }
-    printf("\n");
+    // printf("\n");
 }
 
 /**
@@ -885,6 +885,7 @@ void Agent::sendQuadtreeToCloseAgents() {
     double oldest_exchange = MAXFLOAT;
     for (const auto &agentLocationPair: this->agentLocations) {
         double lastReceivedTick = std::get<2>(agentLocationPair.second);
+        // printf("Agent %s: %f\n", agentLocationPair.first.c_str(), lastReceivedTick);
         //If we have received the location of this agent in the last AGENT_LOCATION_RELEVANT_DURATION_S seconds (so it is probably within communication range)
         if ((this->elapsed_ticks - lastReceivedTick) / this->ticks_per_second <
             this->config.AGENT_LOCATION_RELEVANT_S) {
@@ -900,19 +901,18 @@ void Agent::sendQuadtreeToCloseAgents() {
 
 
     if (!sendQuadtree) return; //If we don't need to send the quadtree to any agent, return
-
+    oldest_exchange = 0;
     //Update the exchange time for all agents within range
     for (const auto &agentLocationPair: this->agentLocations) {
         double lastReceivedTick = std::get<2>(agentLocationPair.second);
         if ((this->elapsed_ticks - lastReceivedTick) / this->ticks_per_second <
             this->config.AGENT_LOCATION_RELEVANT_S) {
             //Find the oldest exchange, so we broadcast the quadtree with info that the agent of the oldest exchange has not received yet.
-            oldest_exchange = std::min(oldest_exchange, this->agentQuadtreeSent[agentLocationPair.first]);
+            // oldest_exchange = std::min(oldest_exchange, this->agentQuadtreeSent[agentLocationPair.first]);
             this->agentQuadtreeSent[agentLocationPair.first] = this->elapsed_ticks; //We will be sending, so update the time we have sent the quadtree to this agent
 
         }
     }
-
     this->quadtree->toStringVector(&quadTreeToStrings, oldest_exchange/this->ticks_per_second);
     for (const std::string &str: quadTreeToStrings) {
         broadcastMessage("M:" + str);
@@ -943,7 +943,7 @@ void Agent::startMission() {
 }
 
 void Agent::doStep() {
-    // printf("Agent %s: %d\n", this->getId().c_str(), this->elapsed_ticks);
+    printf("Agent %s: %d\n", this->getId().c_str(), this->elapsed_ticks);
     // printf("resolution: %f\n", this->quadtree->getResolution());
     if (this->state != State::NO_MISSION) { //Don't do anything before mission
         broadcastMessage("C:" + this->position.toString() + "|" + this->currentBestFrontier.toString());

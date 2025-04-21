@@ -274,36 +274,37 @@ void main_task(void* params){
 
   printf("Connecting to MQTT broker...\n");
   MQTTClient mqttClient(uniqueID);
-  mqttClient.start("mqtt", TASK_PRIORITY+6);
+  mqttClient.start("mqtt", TASK_PRIORITY+6, -1);
+  while (!mqttClient.isConnected()) {
+    vTaskDelay(1000);
+  }
 
   printf("Making radio\n");
   Radio radio(&mqttClient);
 
-  UARTHandler uartHandler;
-  uartHandler.start("uart", TASK_PRIORITY+1);
+  // UARTHandler uartHandler;
+  // uartHandler.start("uart", TASK_PRIORITY+1, 1);
 
   MotorController motorController;
-  motorController.setLeftMotorSpeed(220);
-  motorController.setRightMotorSpeed(220);
 
   bool motorsRunning = true;
 
-  DistanceSensorHandler distanceSensorHandler;
-  distanceSensorHandler.start("distance", TASK_PRIORITY + 10);
-  printf("creating agent\n");
+  // DistanceSensorHandler distanceSensorHandler;
+  // distanceSensorHandler.start("distance", TASK_PRIORITY + 10, 0);
+  // printf("creating agent\n");
 
-  AgentExecutor agentExecutor(uniqueID);
-  agentExecutor.agent.setWifi(radio);
+  // AgentExecutor agentExecutor(uniqueID);
+  // agentExecutor.agent.setWifi(radio);
 
-  //Set agent hc_sr04 sensors to distancesensorhandler sensors
-  // for (int i = 0; i < 4; i++) {
-  //   agent.distance_sensors[i] = distanceSensorHandler.sensors[i];
-  // }
-  agentExecutor.agent.setDistanceSensorHandler(&distanceSensorHandler);
+  // //Set agent hc_sr04 sensors to distancesensorhandler sensors
+  // // for (int i = 0; i < 4; i++) {
+  // //   agent.distance_sensors[i] = distanceSensorHandler.sensors[i];
+  // // }
+  // agentExecutor.agent.setDistanceSensorHandler(&distanceSensorHandler);
 
-  if (!agentExecutor.start("agent", TASK_PRIORITY + 1)) {
-      printf("Failed to start agent task!\n");
-  }  
+  // if (!agentExecutor.start("agent", TASK_PRIORITY + 1, 1)) {
+  //     printf("Failed to start agent task!\n");
+  // }  
   printf("starting loop\n");
   int i = 0;
   // double x = -4;
@@ -313,7 +314,8 @@ void main_task(void* params){
   while (true){
     // printf("Main task running\n");
     // agentExecutor.agent.setPosition(uartHandler.getPosition().x, uartHandler.getPosition().y);
-    agentExecutor.agent.setHeading(uartHandler.getHeading());
+    // agentExecutor.agent.setPosition({1,1});
+    // agentExecutor.agent.setHeading(uartHandler.getHeading());
     // printf("heading: %f\n", ToDegrees(uartHandler.getHeading()));
     // x += x_step; 
     // y += y_step;
@@ -347,10 +349,10 @@ void main_task(void* params){
     // std::string message = "Hello World " + std::to_string(i++);
     // radio.send_message(message, "agent1");
 
-    // std::string message1 = "[7E6E2E794F85C86F]C:0.000000;0.000000|0.314405;0.020960 " + std::to_string(i);
-    // std::string message2 = "[7E6E2E794F85C86F]V:1.000000;0.000000 " + std::to_string(i++);
-    // radio.broadcast_message(message1);
-    // radio.broadcast_message(message2);
+    std::string message1 = "[7E6E2E794F85C86F]C:0.000000;0.000000|0.314405;0.020960 " + std::to_string(i);
+    std::string message2 = "[7E6E2E794F85C86F]V:1.000000;0.000000 " + std::to_string(i++);
+    radio.broadcast_message(message1);
+    radio.broadcast_message(message2);
 
 
 // for (int i = 0; i < 4; i++) {
@@ -408,7 +410,7 @@ void main_task(void* params){
     //     printf("Failed to connect to Wifi \n");
     //   }
     // }
-    vTaskDelay(1000/8);
+    vTaskDelay((1000/8)/portTICK_PERIOD_MS);
 
 
   }

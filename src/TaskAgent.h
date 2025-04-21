@@ -35,7 +35,7 @@ public:
 	 * @param priority - priority - 0 is idle
 	 * @return
 	 */
-	virtual  bool start(const char *name, UBaseType_t priority = tskIDLE_PRIORITY);
+	virtual  bool start(const char *name, UBaseType_t priority = tskIDLE_PRIORITY, int coreID = -1);
 
 	/***
 	 * Stop task

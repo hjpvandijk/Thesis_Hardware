@@ -70,16 +70,24 @@ void MQTTClient::run() {
     // Initial connection
     tryConnect(client);
 
+    //Last wake time
+    TickType_t xLastWakeTime = xTaskGetTickCount();
+
     while (true) {
+        // printf("mqtt running on core %d\n", get_core_num());    
         if (!isConnected(client)) {
-            // printf("Disconnected. Reconnecting...\n");
+            printf("Disconnected. Reconnecting...\n");
             tryConnect(client);
+            //Wait a bit more
+            vTaskDelay(1000 / 10);
         }else {
             // printf("Connected. Sending messages...\n");
             sendMessages(); // Send messages from the queue if connected
             // printf("Sent messages\n");
         }
-        vTaskDelay(1000/50);  // Wait for 2 seconds before checking again
+        // vTaskDelay((1000/50)/portTICK_PERIOD_MS);  // Wait for 2 seconds before checking again
+        vTaskDelayUntil(&xLastWakeTime, (1000/50) / portTICK_PERIOD_MS);
+
     }
 }
 
@@ -90,7 +98,7 @@ void MQTTClient::run() {
 * @return - words
 */
 configSTACK_DEPTH_TYPE MQTTClient::getMaxStackSize(){
-	return 2000;
+	return 5000;
 }
 
 
@@ -100,7 +108,7 @@ void MQTTClient::mqtt_pub_request_cb(void *arg, err_t result)
 {
   inflight_messages--;
   if(result != ERR_OK) {
-    // printf("Publish result from cb: %d\n", result);
+    printf("Publish result from cb: %d\n", result);
     mqtt_ready_to_send = false;
   } else {
     // printf("Publish ok from cb\n");
@@ -129,7 +137,8 @@ void MQTTClient::publish_message(mqtt_client_t *client, void *arg, const char* p
   inflight_messages++;
   sentMessages++;
   if(err != ERR_OK) {
-    // printf("Publish err: %d\n", err);
+    printf("Publish err: %d\n", err);
+    inflight_messages--;
     mqtt_ready_to_send = false;
     free((char*)pub_payload); // Free the allocated memory after sending
   }
@@ -241,6 +250,13 @@ void MQTTClient::dns_callback(const char *name, const ip4_addr_t *ipaddr, void *
     xSemaphoreGiveFromISR(xSemaphoreDNSReady, NULL);
 }
 
+bool MQTTClient::isConnected(){
+    if (client == NULL) {
+        printf("Client is NULL\n");
+        return false;
+    }
+    return mqtt_client_is_connected(client);
+}
 
 
 bool MQTTClient::isConnected(mqtt_client_t *client) {
@@ -299,7 +315,7 @@ void MQTTClient::sendMessages() {
         char* message;
         bool ready = false;
         // printf("messages in queue: %d\n", uxQueueMessagesWaiting(mqttSendQueue));
-        while (mqtt_ready_to_send && inflight_messages < 10000) {
+        while (mqtt_ready_to_send && inflight_messages < 1000) {
             if (xQueueReceive(mqttSendQueue, &message, 0) == pdTRUE) {
                 ready = true;
                 // printf("Sending message\n");

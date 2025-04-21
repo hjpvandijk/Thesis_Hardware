@@ -43,7 +43,7 @@ namespace quadtree {
     public:
         int numberOfLeafNodes = 0; //Number of leaf nodes not UNKNOWN or ANY
         int numberOfCells = 0; //Number of cells in the quadtree
-        int numberOfNodesPerMessage = 50; //Number of nodes to send per message
+        int numberOfNodesPerMessage = 9999;//50; //Number of nodes to send per message
 
         struct Cell {
             Cell * parent;

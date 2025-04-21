@@ -31,6 +31,7 @@ public:
 	virtual ~MQTTClient();
     void addMessageToSend(std::string message);
     void getIncomingMessages(std::vector<std::string> &messages);
+	bool isConnected();
 
 protected:
 

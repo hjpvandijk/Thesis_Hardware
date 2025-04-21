@@ -3,6 +3,8 @@
 #include "hardware/timer.h"
 #include "HC_SR04.h"
 #include "pico/stdlib.h"
+#include <algorithm> // For std::max
+#include <pico/sync.h>
 
 
 // Global array to store pointers to HC_SR04 instances, indexed by GPIO pin
@@ -23,14 +25,18 @@ void HC_SR04::echo_irq_handler(uint gpio, uint32_t events, HC_SR04* instance) {
 
     // printf("GPIO %d IRQ: %d\n", gpio, events);
 
-
-    if (events & GPIO_IRQ_EDGE_RISE) {
-        instance->echo_start = current_time;
-        // if (gpio == 12) printf("ECHO_LEFT RISE\n");
-    } else if (events & GPIO_IRQ_EDGE_FALL) {
-        // if (gpio == 12) printf("ECHO_LEFT FALL\n");
-        instance->echo_end = current_time;
-        instance->valid_value = true;
+    if (xSemaphoreTakeFromISR(instance->dataMutex, NULL) == pdTRUE) {
+        if (events & GPIO_IRQ_EDGE_RISE) {
+            instance->echo_start = current_time;
+            // if (gpio == 12) printf("ECHO_LEFT RISE\n");
+        } else if (events & GPIO_IRQ_EDGE_FALL) {
+            // if (gpio == 12) printf("ECHO_LEFT FALL\n");
+            instance->echo_end = current_time;
+            instance->valid_value = true;
+        }
+    xSemaphoreGiveFromISR(instance->dataMutex, NULL);
+    } else {
+        printf("Failed to acquire mutex in ISR\n");
     }
 }
 
@@ -42,7 +48,7 @@ HC_SR04::HC_SR04(uint8_t triggerPin, uint8_t echoPin) {
     this->echo_end = 0;
     this->valid_value = false;
 
-    // this->dataMutex = xSemaphoreCreateMutex();
+    this->dataMutex = xSemaphoreCreateMutex();
 
     // Initialize the TRIGGER pin as output
     gpio_init(this->triggerPin);
@@ -70,15 +76,15 @@ HC_SR04::HC_SR04(uint8_t triggerPin, uint8_t echoPin) {
 // Measure distance using the HC-SR04 sensor, in meters
 float HC_SR04::measureDistance() {
     // Send a 10us pulse to the TRIGGER pin
+    taskENTER_CRITICAL();
     gpio_put(this->triggerPin, 1);
     sleep_us(10);
     gpio_put(this->triggerPin, 0);
-
     this->valid_value = false;
-
-    // Wait for a valid measurement
-    uint32_t timeout = 20000;//11600; // Timeout in microseconds (max range ~2m)
     absolute_time_t start_time = get_absolute_time();
+    taskEXIT_CRITICAL();
+    // Wait for a valid measurement
+    uint32_t timeout = 12000;//11600; // Timeout in microseconds (max range ~2m)
 
     while (!this->valid_value) {
         // Check if we've exceeded the timeout
@@ -88,11 +94,18 @@ float HC_SR04::measureDistance() {
         }
         // Yield to allow other threads to execute
         // sleep_us(100); // Small delay to reduce CPU usage and allow multitasking
-        vTaskDelay(100);
+        vTaskDelay(1);
     }
 
     // Calculate the distance
-    uint64_t pulse_duration = this->echo_end - this->echo_start;
+    uint64_t pulse_duration;
+    
+    if (xSemaphoreTake(this->dataMutex, portMAX_DELAY) == pdTRUE) {
+        pulse_duration = this->echo_end - this->echo_start;
+        xSemaphoreGive(this->dataMutex);
+    } else {
+        return 2.0f; // Failed to acquire mutex, return an error value
+    }
 
     // Validate the measurement
     if (pulse_duration > timeout || pulse_duration < 100) {
@@ -103,9 +116,10 @@ float HC_SR04::measureDistance() {
 
     // Calculate the distance in cm
     float distance = (pulse_duration / 2.0f) / 29.1f; // Speed of sound: 343m/s
+    // printf("pulse_duration: %llu, distance: %f\n", pulse_duration, distance);
 
     float inM = distance / 100.0f; // Convert to meters
-    this->latestDistance = inM;
+    this->latestDistance = std::min(inM, 2.0f);
     return inM;
 }
 
@@ -120,8 +134,8 @@ double HC_SR04::getDistance() const {
     }
 
     void HC_SR04::setDistance(double distance) {
-        // if (xSemaphoreTake(dataMutex, portMAX_DELAY) == pdTRUE) {
+        if (xSemaphoreTake(dataMutex, portMAX_DELAY) == pdTRUE) {
             this->latestDistance = distance;
-        //     xSemaphoreGive(dataMutex);
-        // }
+            xSemaphoreGive(dataMutex);
+        }
     }
