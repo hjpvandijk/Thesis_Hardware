@@ -274,7 +274,7 @@ void main_task(void* params){
 
   printf("Connecting to MQTT broker...\n");
   MQTTClient mqttClient(uniqueID);
-  mqttClient.start("mqtt", TASK_PRIORITY+6, -1);
+  mqttClient.start("mqtt", TASK_PRIORITY+6, 0);
   while (!mqttClient.isConnected()) {
     vTaskDelay(1000);
   }
@@ -289,22 +289,22 @@ void main_task(void* params){
 
   bool motorsRunning = true;
 
-  // DistanceSensorHandler distanceSensorHandler;
-  // distanceSensorHandler.start("distance", TASK_PRIORITY + 10, 0);
-  // printf("creating agent\n");
+  DistanceSensorHandler distanceSensorHandler;
+  distanceSensorHandler.start("distance", TASK_PRIORITY + 10, 1);
+  printf("creating agent\n");
 
-  // AgentExecutor agentExecutor(uniqueID);
-  // agentExecutor.agent.setWifi(radio);
+  AgentExecutor agentExecutor(uniqueID);
+  agentExecutor.agent.setWifi(radio);
 
-  // //Set agent hc_sr04 sensors to distancesensorhandler sensors
-  // // for (int i = 0; i < 4; i++) {
-  // //   agent.distance_sensors[i] = distanceSensorHandler.sensors[i];
-  // // }
-  // agentExecutor.agent.setDistanceSensorHandler(&distanceSensorHandler);
+  //Set agent hc_sr04 sensors to distancesensorhandler sensors
+  // for (int i = 0; i < 4; i++) {
+  //   agent.distance_sensors[i] = distanceSensorHandler.sensors[i];
+  // }
+  agentExecutor.agent.setDistanceSensorHandler(&distanceSensorHandler);
 
-  // if (!agentExecutor.start("agent", TASK_PRIORITY + 1, 1)) {
-  //     printf("Failed to start agent task!\n");
-  // }  
+  if (!agentExecutor.start("agent", TASK_PRIORITY + 1, 0)) {
+      printf("Failed to start agent task!\n");
+  }  
   printf("starting loop\n");
   int i = 0;
   // double x = -4;
@@ -314,7 +314,7 @@ void main_task(void* params){
   while (true){
     // printf("Main task running\n");
     // agentExecutor.agent.setPosition(uartHandler.getPosition().x, uartHandler.getPosition().y);
-    // agentExecutor.agent.setPosition({1,1});
+    agentExecutor.agent.setPosition({1,1});
     // agentExecutor.agent.setHeading(uartHandler.getHeading());
     // printf("heading: %f\n", ToDegrees(uartHandler.getHeading()));
     // x += x_step; 
@@ -334,37 +334,37 @@ void main_task(void* params){
     //   x_step = 0;
     //   y_step = 0.1;
     // }
-    // if (i%500==0){
+    // if (i%100==0){
     // runTimeStats();
     // size_t freeHeapSize = xPortGetFreeHeapSize();
     // printf("Free heap size: %zu\n", freeHeapSize);
     // size_t totalHeapSize = getTotalHeapSize();
     // printf("Total heap size: %zu\n", totalHeapSize);
 
-    // printf("LWIP:\n");
-    // runTimeStatsLWIP();
+    // // printf("LWIP:\n");
+    // // runTimeStatsLWIP();
     
     // }
 
     // std::string message = "Hello World " + std::to_string(i++);
     // radio.send_message(message, "agent1");
 
-    std::string message1 = "[7E6E2E794F85C86F]C:0.000000;0.000000|0.314405;0.020960 " + std::to_string(i);
-    std::string message2 = "[7E6E2E794F85C86F]V:1.000000;0.000000 " + std::to_string(i++);
-    radio.broadcast_message(message1);
-    radio.broadcast_message(message2);
+    // std::string message1 = "[7E6E2E794F85C86F]C:0.000000;0.000000|0.314405;0.020960 " + std::to_string(i);
+    // std::string message2 = "[7E6E2E794F85C86F]V:1.000000;0.000000 " + std::to_string(i++);
+    // radio.broadcast_message(message1);
+    // radio.broadcast_message(message2);
 
-
-// for (int i = 0; i < 4; i++) {
-//       // if (i != 1) continue;
-//       float distance = distanceSensorHandler.getDistance(i);
-//       // float distanceAgent = agent.distance_sensors.at(i)->getDistance();
-//       // agent.setLastRangeReadings(i, distance);
-//       printf("%d: %f\t", i, distance);
-//       // printf("%d-A: %f\t", i, distanceAgent);
-//     }
-//     printf("\n");
-
+if (i%40 == 0) {
+for (int i = 0; i < 4; i++) {
+      // if (i != 1) continue;
+      float distance = distanceSensorHandler.getDistance(i);
+      // float distanceAgent = agent.distance_sensors.at(i)->getDistance();
+      // agent.setLastRangeReadings(i, distance);
+      printf("%d: %f\t", i, distance);
+      // printf("%d-A: %f\t", i, distanceAgent);
+    }
+    printf("\n");
+}
     // printf("Main task running\n");
 
     
@@ -410,7 +410,7 @@ void main_task(void* params){
     //     printf("Failed to connect to Wifi \n");
     //   }
     // }
-    vTaskDelay((1000/8)/portTICK_PERIOD_MS);
+    vTaskDelay((1000/20)/portTICK_PERIOD_MS);
 
 
   }
@@ -421,7 +421,16 @@ void main_task(void* params){
 void vLaunch(void) {
   TaskHandle_t task;
 
-  xTaskCreate(main_task, "MainThread", 3000, NULL, TASK_PRIORITY, &task);
+  // xTaskCreate(main_task, "MainThread", 3000, NULL, TASK_PRIORITY, &task);
+    xTaskCreateAffinitySet(
+      main_task,       /* Function that implements the task. */
+      "MainThread",   /* Text name for the task. */
+      3000,             /* Stack size in words, not bytes. */
+      NULL,    /* Parameter passed into the task. */
+      TASK_PRIORITY,/* Priority at which the task is created. */
+      0x01, //Core 0
+      &task
+    );
 
   /* Start the tasks and timer running. */
   vTaskStartScheduler();
@@ -437,7 +446,7 @@ int main(void) {
   /* Configure the hardware ready to run the demo. */
   const char* rtos_name;
   rtos_name = "FreeRTOS";
-  printf("Starting %s on core 0:\n", rtos_name);
+  // printf("Starting %s on core 0:\n", rtos_name);
   vLaunch();
 
   return 0;

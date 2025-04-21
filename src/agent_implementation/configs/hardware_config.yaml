@@ -5,7 +5,7 @@ communication:
   agent_info_relevant: 10
   max_jitter: 10
   message_loss_probability: 0
-  quadtree_exchange_interval: 1
+  quadtree_exchange_interval: 5
   time_sync_interval: 5
   wifi_range: 99999
   wifi_speed: 10

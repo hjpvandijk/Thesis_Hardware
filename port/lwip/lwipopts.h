@@ -3,7 +3,7 @@
 
 
 #define TCPIP_THREAD_PRIO   30		//Move to top priority bellow Timer
-#define TCPIP_THREAD_STACKSIZE 2048 //1024
+#define TCPIP_THREAD_STACKSIZE 2560 //1024
 #define DEFAULT_THREAD_STACKSIZE 1024
 #define DEFAULT_RAW_RECVMBOX_SIZE 8
 #define TCPIP_MBOX_SIZE 			4 //8 Reduced as don't think used
@@ -16,10 +16,10 @@
 #define MEM_LIBC_MALLOC             0
 
 #define MEM_ALIGNMENT               4
-#define MEM_SIZE                    10000 //12000 //4000
+#define MEM_SIZE                    15000 //12000 //4000
 #define MEMP_NUM_TCP_SEG            32 // 64 //  32
 #define MEMP_NUM_ARP_QUEUE          10
-#define PBUF_POOL_SIZE              32 //32 //24
+#define PBUF_POOL_SIZE              64 //32 //32 //24
 #define LWIP_ARP                    1
 #define LWIP_ETHERNET               1
 #define LWIP_ICMP                   1
@@ -157,8 +157,8 @@ void sntpSetTimeSec(uint32_t sec);
 #define MEMP_USE_CUSTOM_POOLS 0 //1
 
 //MQTT
-#define MQTT_OUTPUT_RINGBUF_SIZE   2048  // Or larger, depending on your messages
-#define MQTT_REQ_MAX_IN_FLIGHT 8
+#define MQTT_OUTPUT_RINGBUF_SIZE   4196//2048  // Or larger, depending on your messages
+#define MQTT_REQ_MAX_IN_FLIGHT 12
 
 
 #endif /* __LWIPOPTS_H__ */

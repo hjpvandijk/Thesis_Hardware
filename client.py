@@ -190,8 +190,8 @@ def draw_grid():
 
     #Draw lines every meter
     for i in range(-int(MAP_WIDTH_METERS/2), int(MAP_WIDTH_METERS/2)+1):
-        pygame.draw.line(screen, CENTERLINE_COLOR, (map_to_display_coordinates(i, 0)), (map_to_display_coordinates(i, MAP_HEIGHT_METERS)))
-        pygame.draw.line(screen, CENTERLINE_COLOR, (map_to_display_coordinates(0, i)), (map_to_display_coordinates(MAP_WIDTH_METERS, i)))
+        pygame.draw.line(screen, CENTERLINE_COLOR, (map_to_display_coordinates(i, -int(MAP_HEIGHT_METERS/2))), (map_to_display_coordinates(i, MAP_HEIGHT_METERS)))
+        pygame.draw.line(screen, CENTERLINE_COLOR, (map_to_display_coordinates(-int(MAP_WIDTH_METERS/2), i)), (map_to_display_coordinates(MAP_WIDTH_METERS, i)))
 
     
 
@@ -214,7 +214,7 @@ def draw_map():
         # print(f"confidence: {confidence}")
         certainty = (pheromone-0.5) * 2
         color = (255*(1-certainty), 255*(certainty), 0) if certainty > 0 else (255*(-certainty), 255*(1+certainty), 0)
-        print(f"Pheromone: {pheromone} -> {color}")
+        # print(f"Pheromone: {pheromone} -> {color}")
         pygame.draw.rect(screen, color, rect)
         #Draw dark green outline of rectangle
         pygame.draw.rect(screen, (0, 100, 0), rect, 1)
@@ -224,7 +224,7 @@ def draw_agent(x_m, y_m, x_t, y_t, heading):
     """Draws the agent as a triangle with its heading, using meters."""
     display_x, display_y = map_to_display_coordinates(x_m, y_m)
     point1 = (display_x, display_y)
-    angle_rad = math.radians(heading)
+    angle_rad = math.radians(-heading)
     # print(f"Agent: {x_m}, {y_m} -> {display_x}, {display_y} -> {heading}")
     #0 degrees is pointing to the right, 90 degrees is pointing up.
 
@@ -297,6 +297,8 @@ def on_message(client, userdata, message):
                     if chunk:
                         x, y, confidence, timestamp = quadnode_from_string(chunk)
                         current_time = max(current_time, timestamp)
+                        print(f"Timestamp: {timestamp}, Confidence: {confidence}")
+                        print(f"Current time: {current_time}")
                         # x, y are cell coordinates.
                         # if confidence > 0.5:
                         #     map_data[(x, y)] = 1

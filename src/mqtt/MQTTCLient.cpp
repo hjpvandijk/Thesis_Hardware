@@ -16,10 +16,17 @@
 #include <cstring>
 #include "lwip/stats.h"
 #include "lwip/tcp.h"
+#include "lwip/tcpip.h" // Include the header for tcpip_callback
 
 // Define the PublishContext structure
 struct PublishContext {
     char* payload;
+};
+
+struct WrapperContext {
+    MQTTClient* mqtt_client;
+    mqtt_client_t* client;
+    PublishContext* publish_ctx;
 };
 
 
@@ -43,7 +50,7 @@ int sentMessages = 0;
 MQTTClient::MQTTClient(std::string id) {
     this->id = id;
 	//Create queues
-    mqttSendQueue = xQueueCreate(50, sizeof(const char *));
+    mqttSendQueue = xQueueCreate(15, sizeof(const char *));
     if (mqttSendQueue == NULL) {
         printf("Failed to create send queue\n");
     }
@@ -70,24 +77,16 @@ void MQTTClient::run() {
     // Initial connection
     tryConnect(client);
 
-    //Last wake time
-    TickType_t xLastWakeTime = xTaskGetTickCount();
-
     while (true) {
-        // printf("mqtt running on core %d\n", get_core_num());    
         if (!isConnected(client)) {
-            printf("Disconnected. Reconnecting...\n");
+            // printf("Disconnected. Reconnecting...\n");
             tryConnect(client);
-            //Wait a bit more
-            vTaskDelay(1000 / 10);
         }else {
             // printf("Connected. Sending messages...\n");
             sendMessages(); // Send messages from the queue if connected
             // printf("Sent messages\n");
         }
-        // vTaskDelay((1000/50)/portTICK_PERIOD_MS);  // Wait for 2 seconds before checking again
-        vTaskDelayUntil(&xLastWakeTime, (1000/50) / portTICK_PERIOD_MS);
-
+        vTaskDelay(1000/100);  
     }
 }
 
@@ -98,7 +97,7 @@ void MQTTClient::run() {
 * @return - words
 */
 configSTACK_DEPTH_TYPE MQTTClient::getMaxStackSize(){
-	return 5000;
+	return 2000;
 }
 
 
@@ -107,51 +106,68 @@ configSTACK_DEPTH_TYPE MQTTClient::getMaxStackSize(){
 void MQTTClient::mqtt_pub_request_cb(void *arg, err_t result)
 {
   inflight_messages--;
-  if(result != ERR_OK) {
-    printf("Publish result from cb: %d\n", result);
-    mqtt_ready_to_send = false;
-  } else {
-    // printf("Publish ok from cb\n");
-    mqtt_ready_to_send = true;
-    if (arg != NULL) {
-        free((char*)arg); // Free the allocated memory after sending, arg should be the payload
+  WrapperContext* wrapper_ctx = static_cast<WrapperContext*>(arg);
+  if(wrapper_ctx != NULL) {
+    PublishContext* ctx = wrapper_ctx->publish_ctx;
+    if(ctx != NULL) {
+      if(result == ERR_OK) {
+        // printf("Publish ok from cb\n");
+        mqtt_ready_to_send = true;
+      } else {
+        // printf("Publish failed from cb: %d\n", result);
+        mqtt_ready_to_send = false;
+      }
+      free(ctx->payload); // Free payload in all cases in the callback
+      delete ctx;       // Delete PublishContext in all cases
+    } else {
+      printf("Error: mqtt_pub_request_cb received NULL publish_ctx!\n");
     }
-    
+    delete wrapper_ctx; // Now delete WrapperContext in all cases
+  } else {
+    printf("Error: mqtt_pub_request_cb received NULL wrapper_ctx!\n");
   }
 }
 
-void MQTTClient::publish_message(mqtt_client_t *client, void *arg, const char* pub_payload)
-{
-  err_t err;
-  u8_t qos = 0; /* 0 1 or 2, see MQTT specification */
-  u8_t retain = 0; /* No don't retain payload... */
-//   printf("Publishing message: %s\n", pub_payload);
-//   printf("Publishing to topic %s\n", IO_USERNAME "/feeds/" IO_FEED_NAME);
-//   err = mqtt_publish(client, IO_USERNAME "/feeds/" IO_FEED_NAME, pub_payload, strlen(pub_payload), qos, retain, mqtt_pub_request_cb, arg);
-//     printf("TCP seg used: %d / %d : %d\n", lwip_stats.memp[MEMP_TCP_SEG]->used, lwip_stats.memp[MEMP_TCP_SEG]->max, lwip_stats.memp[MEMP_TCP_SEG]->avail);
-//   printf("MEMP_NUM_TCP_SEG: %d\n", MEMP_NUM_TCP_SEG);
-//     printf("TCP Retransmission errors: %d\n", lwip_stats.tcp.rterr);
-//   printf("Publishing to topic %s\n", MQTT_TOPIC);
-  err = mqtt_publish(client, MQTT_TOPIC, pub_payload, strlen(pub_payload), qos, retain, mqtt_pub_request_cb, (void*) pub_payload);
-//   printf("Sent message\n");
-  inflight_messages++;
-  sentMessages++;
-  if(err != ERR_OK) {
-    printf("Publish err: %d\n", err);
-    inflight_messages--;
-    mqtt_ready_to_send = false;
-    free((char*)pub_payload); // Free the allocated memory after sending
-  }
-//   else {
-//     printf("Publish ok\n");
-//   }
-//   extern struct stats_ lwip_stats;
-//   vTaskDelay(10);
-
-
-
+void MQTTClient::publish_message_internal(mqtt_client_t *client, void *arg) {
+    WrapperContext* wrapper_ctx = static_cast<WrapperContext*>(arg); // Cast to WrapperContext here
+    PublishContext* ctx = static_cast<PublishContext*>(wrapper_ctx->publish_ctx);
+    // printf("Publishing message: %s\n", ctx->payload);
+    err_t err = mqtt_publish(client, MQTT_TOPIC, ctx->payload, strlen(ctx->payload), 0, 0, mqtt_pub_request_cb, (void*)wrapper_ctx);
+    inflight_messages++;
+    sentMessages++;
+    if(err != ERR_OK) {
+        printf("Publish err (callback): %d\n", err);
+        mqtt_ready_to_send = false;
+        free(ctx->payload);
+        delete ctx;
+        delete wrapper_ctx;
+    }
 }
 
+void MQTTClient::publish_message_static_wrapper(void *arg) {
+    WrapperContext* wrapper_ctx = static_cast<WrapperContext*>(arg);
+    wrapper_ctx->mqtt_client->publish_message_internal(wrapper_ctx->client, wrapper_ctx);
+    // delete wrapper_ctx;
+}
+
+
+void MQTTClient::publish_message(mqtt_client_t *client, const char* pub_payload) {
+    PublishContext* publish_ctx = new PublishContext;
+    publish_ctx->payload = strdup(pub_payload);
+
+    WrapperContext* wrapper_ctx = new WrapperContext;
+    wrapper_ctx->mqtt_client = this;
+    wrapper_ctx->client = client;
+    wrapper_ctx->publish_ctx = publish_ctx;
+
+    err_t err = tcpip_callback(publish_message_static_wrapper, wrapper_ctx);
+    if (err != ERR_OK) {
+        printf("tcpip_callback failed: %d\n", err);
+        free(publish_ctx->payload);
+        delete publish_ctx;
+        delete wrapper_ctx;
+    }
+}
 
 /* The idea is to demultiplex topic and create some reference to be used in data callbacks
    Example here uses a global variable, better would be to use a member in arg
@@ -250,14 +266,12 @@ void MQTTClient::dns_callback(const char *name, const ip4_addr_t *ipaddr, void *
     xSemaphoreGiveFromISR(xSemaphoreDNSReady, NULL);
 }
 
-bool MQTTClient::isConnected(){
+bool MQTTClient::isConnected() {
     if (client == NULL) {
-        printf("Client is NULL\n");
         return false;
     }
     return mqtt_client_is_connected(client);
 }
-
 
 bool MQTTClient::isConnected(mqtt_client_t *client) {
   return mqtt_client_is_connected(client);
@@ -315,12 +329,12 @@ void MQTTClient::sendMessages() {
         char* message;
         bool ready = false;
         // printf("messages in queue: %d\n", uxQueueMessagesWaiting(mqttSendQueue));
-        while (mqtt_ready_to_send && inflight_messages < 1000) {
+        while (mqtt_ready_to_send && inflight_messages < 10000) {
             if (xQueueReceive(mqttSendQueue, &message, 0) == pdTRUE) {
                 ready = true;
                 // printf("Sending message\n");
-                publish_message(client, NULL, message);
-                // free(message); // Free the allocated memory after sending
+                publish_message(client, message);
+                free(message); // Free the allocated memory after sending
                 // vTaskDelay(100); // Add a small delay to avoid flooding the queue
             } else {
                 ready = true; // No messages to send so we are ready

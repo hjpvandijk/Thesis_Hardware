@@ -388,6 +388,7 @@ void Agent::checkForObstacles() {
             double adjacent = argos::Cos(sensor_rotation) * sensorDistance;
 
             Coordinate object = {this->position.x + adjacent, this->position.y + opposite};
+            // printf("Object at (%f, %f) with distance %f\n", object.x, object.y, sensorDistance);
             //If the detected object is actually another agent, add it as a free area
             //So check if the object coordinate is close to another agent
             bool close_to_other_agent = false;
@@ -943,7 +944,7 @@ void Agent::startMission() {
 }
 
 void Agent::doStep() {
-    printf("Agent %s: %d\n", this->getId().c_str(), this->elapsed_ticks);
+    // printf("Agent %s: %d\n", this->getId().c_str(), this->elapsed_ticks);
     // printf("resolution: %f\n", this->quadtree->getResolution());
     if (this->state != State::NO_MISSION) { //Don't do anything before mission
         broadcastMessage("C:" + this->position.toString() + "|" + this->currentBestFrontier.toString());
