@@ -43,7 +43,7 @@ namespace quadtree {
     public:
         int numberOfLeafNodes = 0; //Number of leaf nodes not UNKNOWN or ANY
         int numberOfCells = 0; //Number of cells in the quadtree
-        int numberOfNodesPerMessage = 9999;//50; //Number of nodes to send per message
+        int numberOfNodesPerMessage = 1;//5;//25; //Number of nodes to send per message
 
         struct Cell {
             Cell * parent;
@@ -620,7 +620,7 @@ namespace quadtree {
             std::string grouped_message = "";
             grouped_message.clear();
             int counter = 0;
-
+            printf("number of nodes per message: %d\n", this->numberOfNodesPerMessage);
             traverse = [&](const Cell *cell, const Box &box, int &counter, std::string &grouped_message) {
                 if (cell == nullptr) return;
 
@@ -642,7 +642,7 @@ namespace quadtree {
 
                         //Group every numberOfNodesPerMessage nodes
                         grouped_message.append(str);
-
+                        printf("counter: %d\n", counter);
                         if (counter == this->numberOfNodesPerMessage - 1) {
                             strings->emplace_back(grouped_message);
                             grouped_message.clear();

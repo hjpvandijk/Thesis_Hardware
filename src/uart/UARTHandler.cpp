@@ -70,7 +70,7 @@ void UARTHandler::run() {
                     position.x = array[0];
                     position.y = array[1];
                     heading = argos::CRadians(array[3]);
-                    // printf("Position: (%f, %f), Heading: %f\n", position.x, position.y, heading);
+                    printf("Position: (%f, %f), Heading: %f\n", position.x, position.y, heading);
                     dataIndex = 0; // Reset for the next packet
                 } else if (dataIndex >= sizeof(dataBuffer)) {
                     printf("Packet too long or missing end byte. Resetting.\n");

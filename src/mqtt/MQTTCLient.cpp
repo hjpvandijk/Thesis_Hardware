@@ -81,6 +81,7 @@ void MQTTClient::run() {
         if (!isConnected(client)) {
             // printf("Disconnected. Reconnecting...\n");
             tryConnect(client);
+            vTaskDelay(1000/portTICK_PERIOD_MS); // Wait for a second before retrying
         }else {
             // printf("Connected. Sending messages...\n");
             sendMessages(); // Send messages from the queue if connected
@@ -335,7 +336,7 @@ void MQTTClient::sendMessages() {
                 // printf("Sending message\n");
                 publish_message(client, message);
                 free(message); // Free the allocated memory after sending
-                // vTaskDelay(100); // Add a small delay to avoid flooding the queue
+                // vTaskDelay(15); // Add a small delay to avoid flooding the queue
             } else {
                 ready = true; // No messages to send so we are ready
                 // printf("No messages to send\n");

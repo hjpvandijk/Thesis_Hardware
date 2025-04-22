@@ -14,8 +14,8 @@ DistanceSensorHandler::DistanceSensorHandler() : sensorsInitialized(false) {
     // Initialize the sensors
     sensors[0] = new HC_SR04(TRIG_FORWARD, ECHO_FORWARD);
     sensors[1] = new HC_SR04(TRIG_LEFT, ECHO_LEFT);
-    sensors[2] = new HC_SR04(TRIG_RIGHT, ECHO_RIGHT);
-    sensors[3] = new HC_SR04(TRIG_BACK, ECHO_BACK);
+    sensors[2] = new HC_SR04(TRIG_BACK, ECHO_BACK);
+    sensors[3] = new HC_SR04(TRIG_RIGHT, ECHO_RIGHT);
 }
 
 DistanceSensorHandler::~DistanceSensorHandler() {

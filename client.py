@@ -9,7 +9,8 @@ import traceback
 
 
 # Configuration
-MQTT_BROKER_IP = "192.168.1.66"  # Replace with your MQTT broker's IP address
+# MQTT_BROKER_IP = "192.168.1.66"  # Replace with your MQTT broker's IP address
+MQTT_BROKER_IP = "192.168.43.64"
 MQTT_TOPIC = "test/topic"
 AGENT_ID = "0D351F00F5DF8253"  #  The agent's ID.  The code will filter out messages not for this agent.
 
@@ -224,7 +225,7 @@ def draw_agent(x_m, y_m, x_t, y_t, heading):
     """Draws the agent as a triangle with its heading, using meters."""
     display_x, display_y = map_to_display_coordinates(x_m, y_m)
     point1 = (display_x, display_y)
-    angle_rad = math.radians(-heading)
+    angle_rad = math.radians(heading)
     # print(f"Agent: {x_m}, {y_m} -> {display_x}, {display_y} -> {heading}")
     #0 degrees is pointing to the right, 90 degrees is pointing up.
 

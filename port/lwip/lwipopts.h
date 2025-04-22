@@ -16,8 +16,8 @@
 #define MEM_LIBC_MALLOC             0
 
 #define MEM_ALIGNMENT               4
-#define MEM_SIZE                    15000 //12000 //4000
-#define MEMP_NUM_TCP_SEG            32 // 64 //  32
+#define MEM_SIZE                    20000 //12000 //4000
+#define MEMP_NUM_TCP_SEG            64 //  32
 #define MEMP_NUM_ARP_QUEUE          10
 #define PBUF_POOL_SIZE              64 //32 //32 //24
 #define LWIP_ARP                    1
@@ -147,7 +147,7 @@
 void sntpSetTimeSec(uint32_t sec);
 #define SNTP_SET_SYSTEM_TIME(sec) sntpSetTimeSec(sec)
 //MEMP_NUM_SYS_TIMEOUTS Needs to be one larger than default for SNTP
-#define MEMP_NUM_SYS_TIMEOUT            (LWIP_NUM_SYS_TIMEOUT_INTERNAL + 20)
+#define MEMP_NUM_SYS_TIMEOUT            (LWIP_NUM_SYS_TIMEOUT_INTERNAL + 12)
 
 //Once an hour
 #define SNTP_UPDATE_DELAY 60000*60
@@ -157,7 +157,7 @@ void sntpSetTimeSec(uint32_t sec);
 #define MEMP_USE_CUSTOM_POOLS 0 //1
 
 //MQTT
-#define MQTT_OUTPUT_RINGBUF_SIZE   4196//2048  // Or larger, depending on your messages
+#define MQTT_OUTPUT_RINGBUF_SIZE   10000//7000//5000 //4196//2048  // Or larger, depending on your messages
 #define MQTT_REQ_MAX_IN_FLIGHT 12
 
 

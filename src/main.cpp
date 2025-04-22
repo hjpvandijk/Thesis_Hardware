@@ -274,37 +274,37 @@ void main_task(void* params){
 
   printf("Connecting to MQTT broker...\n");
   MQTTClient mqttClient(uniqueID);
-  mqttClient.start("mqtt", TASK_PRIORITY+6, 0);
+  mqttClient.start("mqtt", TASK_PRIORITY+6, 1);
   while (!mqttClient.isConnected()) {
-    vTaskDelay(1000);
+    vTaskDelay(1000/portTICK_PERIOD_MS);
   }
 
   printf("Making radio\n");
   Radio radio(&mqttClient);
 
   // UARTHandler uartHandler;
-  // uartHandler.start("uart", TASK_PRIORITY+1, 1);
+  // uartHandler.start("uart", TASK_PRIORITY+1, 0);
 
-  MotorController motorController;
+  // MotorController motorController;
 
-  bool motorsRunning = true;
+  // bool motorsRunning = true;
 
-  DistanceSensorHandler distanceSensorHandler;
-  distanceSensorHandler.start("distance", TASK_PRIORITY + 10, 1);
-  printf("creating agent\n");
+  // DistanceSensorHandler distanceSensorHandler;
+  // distanceSensorHandler.start("distance", TASK_PRIORITY + 10, 1);
+  // printf("creating agent\n");
 
-  AgentExecutor agentExecutor(uniqueID);
-  agentExecutor.agent.setWifi(radio);
+  // AgentExecutor agentExecutor(uniqueID);
+  // agentExecutor.agent.setWifi(radio);
 
   //Set agent hc_sr04 sensors to distancesensorhandler sensors
   // for (int i = 0; i < 4; i++) {
   //   agent.distance_sensors[i] = distanceSensorHandler.sensors[i];
   // }
-  agentExecutor.agent.setDistanceSensorHandler(&distanceSensorHandler);
+  // agentExecutor.agent.setDistanceSensorHandler(&distanceSensorHandler);
 
-  if (!agentExecutor.start("agent", TASK_PRIORITY + 1, 0)) {
-      printf("Failed to start agent task!\n");
-  }  
+  // if (!agentExecutor.start("agent", TASK_PRIORITY + 1, 0)) {
+  //     printf("Failed to start agent task!\n");
+  // }  
   printf("starting loop\n");
   int i = 0;
   // double x = -4;
@@ -314,7 +314,7 @@ void main_task(void* params){
   while (true){
     // printf("Main task running\n");
     // agentExecutor.agent.setPosition(uartHandler.getPosition().x, uartHandler.getPosition().y);
-    agentExecutor.agent.setPosition({1,1});
+    // agentExecutor.agent.setPosition({0.5,0.5});
     // agentExecutor.agent.setHeading(uartHandler.getHeading());
     // printf("heading: %f\n", ToDegrees(uartHandler.getHeading()));
     // x += x_step; 
@@ -334,7 +334,7 @@ void main_task(void* params){
     //   x_step = 0;
     //   y_step = 0.1;
     // }
-    // if (i%100==0){
+    // if (i%20==0){
     // runTimeStats();
     // size_t freeHeapSize = xPortGetFreeHeapSize();
     // printf("Free heap size: %zu\n", freeHeapSize);
@@ -349,22 +349,33 @@ void main_task(void* params){
     // std::string message = "Hello World " + std::to_string(i++);
     // radio.send_message(message, "agent1");
 
-    // std::string message1 = "[7E6E2E794F85C86F]C:0.000000;0.000000|0.314405;0.020960 " + std::to_string(i);
-    // std::string message2 = "[7E6E2E794F85C86F]V:1.000000;0.000000 " + std::to_string(i++);
-    // radio.broadcast_message(message1);
-    // radio.broadcast_message(message2);
-
-if (i%40 == 0) {
-for (int i = 0; i < 4; i++) {
-      // if (i != 1) continue;
-      float distance = distanceSensorHandler.getDistance(i);
-      // float distanceAgent = agent.distance_sensors.at(i)->getDistance();
-      // agent.setLastRangeReadings(i, distance);
-      printf("%d: %f\t", i, distance);
-      // printf("%d-A: %f\t", i, distanceAgent);
+    std::string message1 = "[7E6E2E794F85C86F]C:0.000000;0.000000|0.314405;0.020960 " + std::to_string(i);
+    std::string message2 = "[7E6E2E794F85C86F]V:1.000000;0.000000 " + std::to_string(i++);
+    std::string message3 = "[7E6E2E794F85C86F]M:-0.781250;2.656250:2.017475@8.750000|-0.312500;2.812500:2.153790@94.500000|-0.312500;2.187500:2.168239@94.500000|-0.156250;1.718750:2.197224@94.500000|-0.156250;1.406250:2.197224@93.250000|-1.718750;0.781250:2.197224@94.500000|-1.406250;0.781250:2.197224@94.500000|-2.031250;0.468750:1.282117@89.187500|-1.562500;0.312500:2.172665@94.500000|-1.093750;0.781250:2.197224@94.500000|1.406250;1.406250:2.197224@94.500000|1.718750;1.406250:-2.944439@94.500000";
+    std::string message4 = "[7E6E2E794F85C86F]M:-0.781250;0.781250:2.197224@94.500000|-0.312500;0.937500:2.172207@94.500000|-1.093750;0.468750:2.197224@93.250000|-0.781250;0.468750:2.197224@92.375000|-1.093750;0.156250:2.197224@26.875000|-0.468750;0.468750:2.197224@91.812500|-0.156250;0.468750:2.197224@26.875000|0.156250;2.031250:0.746978@94.375000|0.156250;1.718750:2.197224@94.500000|0.156250;1.406250:2.197224@94.500000|0.781250;1.406250:2.197224@94.375000|1.093750;1.406250:2.197224@94.500000|1.718750;1.718750:-2.944439@4.687500";
+    // std::string message3 = "[7E6E2E794F85C86F]M:-0.781250;2.656250:2.017475@8.750000|-0.312500;2.812500:2.153790@94.500000|-0.312500;2.187500:2.168239@94.500000|-0.156250;1.718750:2.197224@94.500000|-0.156250;1.406250:2.197224@93.250000|-1.718750;0.781250:2.197224@94.500000|-1.406250;0.781250:2.197224@94.500000|-2.031250;0.468750:1.282117@89.187500|-1.562500;0.312500:2.172665@94.500000|-1.093750;0.781250:2.197224@94.500000|-0.781250;0.781250:2.197224@94.500000|-0.312500;0.937500:2.172207@94.500000|-1.093750;0.468750:2.197224@93.250000|-0.781250;0.468750:2.197224@92.375000|-1.093750;0.156250:2.197224@26.875000|-0.468750;0.468750:2.197224@91.812500|-0.156250;0.468750:2.197224@26.875000|0.156250;2.031250:0.746978@94.375000|0.156250;1.718750:2.197224@94.500000|0.156250;1.406250:2.197224@94.500000|0.781250;1.406250:2.197224@94.375000|1.093750;1.406250:2.197224@94.500000|1.718750;1.718750:-2.944439@4.687500|1.406250;1.406250:2.197224@94.500000|1.718750;1.406250:-2.944439@94.500000";
+    radio.broadcast_message(message1);
+    radio.broadcast_message(message2);
+    if (i%10*5 == 0){ 
+      radio.broadcast_message(message3);
+      radio.broadcast_message(message4);
+      radio.broadcast_message(message3);
+      radio.broadcast_message(message4);
+      radio.broadcast_message(message3);
+      
     }
-    printf("\n");
-}
+
+// if (i%40 == 0) {
+// for (int i = 0; i < 4; i++) {
+//       // if (i != 1) continue;
+//       float distance = distanceSensorHandler.getDistance(i);
+//       // float distanceAgent = agent.distance_sensors.at(i)->getDistance();
+//       // agent.setLastRangeReadings(i, distance);
+//       printf("%d: %f\t", i, distance);
+//       // printf("%d-A: %f\t", i, distanceAgent);
+//     }
+//     printf("\n");
+// }
     // printf("Main task running\n");
 
     
@@ -410,7 +421,7 @@ for (int i = 0; i < 4; i++) {
     //     printf("Failed to connect to Wifi \n");
     //   }
     // }
-    vTaskDelay((1000/20)/portTICK_PERIOD_MS);
+    vTaskDelay((1000/10)/portTICK_PERIOD_MS);
 
 
   }
