@@ -34,6 +34,7 @@ public:
 	bool isConnected();
 
 
+
 protected:
 
 	/***
@@ -50,11 +51,11 @@ protected:
 
 	void test();
     
+    mqtt_client_t *client;
 
 private:
     std::string id;
     //Our client
-    mqtt_client_t *client;
 
     //Messages to send
     static QueueHandle_t mqttSendQueue;

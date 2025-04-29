@@ -70,10 +70,10 @@ Agent::Agent(std::string id, double rootbox_size, const std::string& config_file
     this->pathFollower = PathFollower();
 #endif
 #ifdef SKIP_UNREACHABLE_FRONTIERS
-    this->frontierEvaluator = FrontierEvaluator(5*this->ticks_per_second); //5 seconds
+    this->frontierEvaluator = FrontierEvaluator(15*this->ticks_per_second); //5 seconds
 #endif
 #ifdef RANDOM_WALK_WHEN_NO_FRONTIERS
-    this->randomWalker = RandomWalk(5*this->ticks_per_second); //5 seconds
+    this->randomWalker = RandomWalk(15*this->ticks_per_second); //5 seconds
 #endif
     this->sensor_reading_distance_probability = (1-this->config.P_AT_MAX_SENSOR_RANGE) / this->config.DISTANCE_SENSOR_PROXIMITY_RANGE;
 
@@ -91,7 +91,9 @@ void Agent::setPosition(Coordinate new_position) {
 }
 
 void Agent::setHeading(argos::CRadians new_heading) {
-    this->heading = Coordinate::ArgosHeadingToOwn(new_heading).SignedNormalize();
+    // this->heading = Coordinate::ArgosHeadingToOwn(new_heading).SignedNormalize();
+    // printf("Setting heading to %f\n", new_heading.GetValue());
+    this->heading = new_heading;
 }
 
 
@@ -384,6 +386,15 @@ void Agent::checkForObstacles() {
         auto sensorDistance = this->distanceSensorHandler->getDistance(sensor_index);
         // printf("Sensor %d: %f ", sensor_index, sensorDistance);
         if (sensorDistance < this->config.DISTANCE_SENSOR_PROXIMITY_RANGE) {
+            // std::string pos = "FRONT";
+            // if (sensor_index == 1) {
+            //     pos = "RIGHT";
+            // } else if (sensor_index == 2) {
+            //     pos = "BACK";
+            // } else if (sensor_index == 3) {
+            //     pos = "LEFT";
+            // }
+            // printf("object at %s with distance %f\n", pos.c_str(), sensorDistance);
             double opposite = argos::Sin(sensor_rotation) * sensorDistance;
             double adjacent = argos::Cos(sensor_rotation) * sensorDistance;
 
@@ -671,6 +682,12 @@ void Agent::calculateNextPosition() {
 #else
             //Find new frontier
             targetVector = ForceVectorCalculator::calculateUnexploredFrontierVector(this);
+            auto route = this->route_to_best_frontier;
+            std::string routeString = "R:";
+            for (const auto &[start,end]: route) {
+                routeString += start.toString() + ":" + end.toString() + "|";
+            }
+            broadcastMessage(routeString);
             this->last_feasibility_check_tick = this->elapsed_ticks;
             this->last_frontier_switch_tick = this->elapsed_ticks;
 #endif
@@ -902,14 +919,14 @@ void Agent::sendQuadtreeToCloseAgents() {
 
 
     if (!sendQuadtree) return; //If we don't need to send the quadtree to any agent, return
-    oldest_exchange = 0;
+    // oldest_exchange = 0;
     //Update the exchange time for all agents within range
     for (const auto &agentLocationPair: this->agentLocations) {
         double lastReceivedTick = std::get<2>(agentLocationPair.second);
         if ((this->elapsed_ticks - lastReceivedTick) / this->ticks_per_second <
             this->config.AGENT_LOCATION_RELEVANT_S) {
             //Find the oldest exchange, so we broadcast the quadtree with info that the agent of the oldest exchange has not received yet.
-            // oldest_exchange = std::min(oldest_exchange, this->agentQuadtreeSent[agentLocationPair.first]);
+            oldest_exchange = std::min(oldest_exchange, this->agentQuadtreeSent[agentLocationPair.first]);
             this->agentQuadtreeSent[agentLocationPair.first] = this->elapsed_ticks; //We will be sending, so update the time we have sent the quadtree to this agent
 
         }
@@ -944,7 +961,8 @@ void Agent::startMission() {
 }
 
 void Agent::doStep() {
-    // printf("Agent %s: %d\n", this->getId().c_str(), this->elapsed_ticks);
+    // printf("Agent %s: %f\n", this->getId().c_str(), this->heading);
+    if(this->elapsed_ticks % 100 == 0) printf("Agent %s: %f with state %d\n", this->getId().c_str(), this->elapsed_ticks/this->ticks_per_second, this->state);
     // printf("resolution: %f\n", this->quadtree->getResolution());
     if (this->state != State::NO_MISSION) { //Don't do anything before mission
         broadcastMessage("C:" + this->position.toString() + "|" + this->currentBestFrontier.toString());
@@ -985,7 +1003,10 @@ void Agent::doStep() {
     } else { //Exploring or returning
         if (this->elapsed_ticks >= this->ticks_per_second) { //Wait one second before starting, allowing initial communication
             checkForObstacles();
-            calculateNextPosition();
+            calculateNextPosition();  
+            // this->force_vector = {1, 0}; //Reset force vector
+            // this->targetHeading = argos::CRadians::ZERO;
+
             //If there is no force vector, do not move
             if (this->force_vector == argos::CVector2{0, 0}) this->differential_drive.stop();
             else {
@@ -994,6 +1015,7 @@ void Agent::doStep() {
 
                 argos::CDegrees diffDeg = ToDegrees(diff);
 
+                // printf("heading: %f, targetHeading: %f, diff: %f\n", ToDegrees(this->heading).GetValue(), ToDegrees(this->targetHeading).GetValue(), diffDeg.GetValue());
 
                 if (diffDeg > argos::CDegrees(-this->config.TURN_THRESHOLD_DEGREES) &&
                     diffDeg < argos::CDegrees(this->config.TURN_THRESHOLD_DEGREES)) {

@@ -1,7 +1,7 @@
 #include "AgentExecutor.h"
 
 AgentExecutor::AgentExecutor(std::string id) {
-    agent = Agent(std::move(id), 10, "config_yaml_data.h");
+    agent = Agent(std::move(id), 5, "config_yaml_data.h");
     agent.setPosition(0, 0);
 }
 
@@ -26,4 +26,4 @@ void AgentExecutor::run() {
 }
 
 
-configSTACK_DEPTH_TYPE AgentExecutor::getMaxStackSize() { return 20000; }
+configSTACK_DEPTH_TYPE AgentExecutor::getMaxStackSize() { return 5000; }

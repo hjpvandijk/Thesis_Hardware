@@ -1,4 +1,11 @@
 #include "DifferentialDrive.h"
+#include <cstdio>
+
+int current_dir = 0; //0=fwd, 1=left, 2=right
+int prev_dir = 0;
+int i_on = 0;
+bool on = true;
+
 
 DifferentialDrive::DifferentialDrive(){
     this->acceleration = 0.5;
@@ -37,12 +44,50 @@ DifferentialDrive::DifferentialDrive(float max_speed_straight,
 }
 
 void DifferentialDrive::setSpeed(float speed_right, float speed_left) {
+    if (current_dir != prev_dir)
+        i_on = 0;
+    
+
+    auto soft_start_factor = i_on / 3.0f;
+    // if (on) {
+    // printf("Direction: %d, i_on: %d, pwm_r: %f\n", current_dir, i_on, speed_right * soft_start_factor);
+    motorController.setRightMotorSpeed(speed_right * (soft_start_factor));
+    motorController.setLeftMotorSpeed(speed_left * soft_start_factor);
     // motorController.setRightMotorSpeed(speed_right);
     // motorController.setLeftMotorSpeed(speed_left);
+
+    // } else {
+    //     motorController.setRightMotorSpeed(0);
+    //     motorController.setLeftMotorSpeed(0);
+    // }
+    if (i_on < 3){
+        i_on++;
+    }
+    prev_dir = current_dir;
+
+    // if (on){
+    //     motorController.setRightMotorSpeed(speed_right);
+    //     motorController.setLeftMotorSpeed(speed_left);
+    //     // printf("ON");
+    // } else {
+    //     motorController.setRightMotorSpeed(0);
+    //     motorController.setLeftMotorSpeed(0);
+    //     // printf("OFF");
+    // }
+
+    // if (i_on < 0){
+    //     i_on++;
+    // } else {
+    //     on = !on;
+    //     i_on = 0;
+    // }
+
 }
 
 void DifferentialDrive::forward() {
-    setSpeed(forwardRPM, forwardRPM);
+    current_dir = 0;
+    // printf("Forward with speeds %f, %f\n", forwardRPM_R, forwardRPM_L);
+    setSpeed(forwardRPM_R, forwardRPM_L);
 }
 
 void DifferentialDrive::stop() {
@@ -50,11 +95,15 @@ void DifferentialDrive::stop() {
 }
 
 void DifferentialDrive::turnLeft() {
-    setSpeed(-turnRPM, turnRPM);
+    current_dir = 1;
+    // printf("Left with speeds %f, %f\n", -turnRPM_R, turnRPM_L);
+    setSpeed(turnRPM_R, -turnRPM_L);
 }
 
 void DifferentialDrive::turnRight() {
-    setSpeed(turnRPM, -turnRPM);
+    current_dir = 2;
+    // printf("Right with speeds %f, %f\n", turnRPM_R, -turnRPM_L);
+    setSpeed(-turnRPM_R, turnRPM_L);
 }
 
 //TODO: PID loop

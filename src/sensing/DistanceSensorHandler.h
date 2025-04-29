@@ -11,6 +11,7 @@
 
 #include <vector>
 #include <string>
+#include <array>
 #include "queue.h"
 #include "HC_SR04.h"
 
@@ -22,6 +23,7 @@ public:
 
    float getDistance(int sensorIndex);
    HC_SR04 *sensors[4];
+   std::array<float, 4> distanceCompForRealism = {0.105, 0.076, 0.076, 0.105};
 
 protected:
 

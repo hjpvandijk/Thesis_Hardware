@@ -92,7 +92,7 @@ argos::CVector2 ForceVectorCalculator::calculateAgentAvoidanceVector(Agent* agen
 
     Coordinate averageNeighborLocation = {0, 0};
 
-    bool neighborsWithinRange = getAverageNeighborLocation(agent, &averageNeighborLocation, agent->config.AGENT_AVOIDANCE_RADIUS);
+    bool neighborsWithinRange = false;//getAverageNeighborLocation(agent, &averageNeighborLocation, agent->config.AGENT_AVOIDANCE_RADIUS);
     if (!neighborsWithinRange) {
         return {0, 0};
     }
@@ -462,7 +462,13 @@ argos::CVector2 ForceVectorCalculator::calculateUnexploredFrontierVector(Agent* 
         for (auto [box, pheromone]: region) {
             double cellsInBox = box.getSize() / agent->quadtree->getResolution();
             // printf("Frontier region box size: %f, %f, %f, %f\n", box.getCenter().x, box.getCenter().y, box.getSize(), pheromone);
-            if (cellsInBox != 1) printf("Box size is not 1: %f, %f, %f, %f\n", box.getCenter().x, box.getCenter().y, box.getSize(), pheromone);
+            if (cellsInBox != 1){
+                printf("Box size is not 1: %f, %f, %f, %f\n", box.getCenter().x, box.getCenter().y, box.getSize(), pheromone);
+                size_t freeHeapSize = xPortGetFreeHeapSize();
+                size_t freeStackSize = uxTaskGetStackHighWaterMark(NULL);
+                printf("Free heap size: %zu, Free stack size: %zu\n", freeHeapSize, freeStackSize);
+                continue;
+            }
             assert(cellsInBox == 1);
             sumX += box.getCenter().x *
                     cellsInBox; //Take the box size into account (parent nodes will contain the info about all its children)

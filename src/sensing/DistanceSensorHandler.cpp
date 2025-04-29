@@ -13,9 +13,9 @@ DistanceSensorHandler::DistanceSensorHandler() : sensorsInitialized(false) {
     sensorsMutex = xSemaphoreCreateMutex();
     // Initialize the sensors
     sensors[0] = new HC_SR04(TRIG_FORWARD, ECHO_FORWARD);
-    sensors[1] = new HC_SR04(TRIG_LEFT, ECHO_LEFT);
+    sensors[1] = new HC_SR04(TRIG_RIGHT, ECHO_RIGHT);
     sensors[2] = new HC_SR04(TRIG_BACK, ECHO_BACK);
-    sensors[3] = new HC_SR04(TRIG_RIGHT, ECHO_RIGHT);
+    sensors[3] = new HC_SR04(TRIG_LEFT, ECHO_LEFT);
 }
 
 DistanceSensorHandler::~DistanceSensorHandler() {
@@ -58,7 +58,7 @@ void DistanceSensorHandler::run() {
     while (true) {
         // printf("running on core %d\n", get_core_num());
         if (xSemaphoreTake(sensorsMutex, portMAX_DELAY) == pdTRUE) {
-                float distance = sensors[currentSensor]->measureDistance();
+                float distance = sensors[currentSensor]->measureDistance(distanceCompForRealism[currentSensor]);
                 // if (currentSensor==1){
                     // printf("Distance from sensor %d: %f\n", currentSensor, distance);
                 // }
@@ -73,5 +73,5 @@ void DistanceSensorHandler::run() {
 }
 
 configSTACK_DEPTH_TYPE DistanceSensorHandler::getMaxStackSize() {
-    return 200;
+    return 500;
 }

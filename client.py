@@ -10,15 +10,15 @@ import traceback
 
 # Configuration
 # MQTT_BROKER_IP = "192.168.1.66"  # Replace with your MQTT broker's IP address
-MQTT_BROKER_IP = "192.168.43.64"
+MQTT_BROKER_IP = "192.168.176.64"
 MQTT_TOPIC = "test/topic"
-AGENT_ID = "0D351F00F5DF8253"  #  The agent's ID.  The code will filter out messages not for this agent.
+AGENT_ID = "12F959FD3BDFD31C"  #  The agent's ID.  The code will filter out messages not for this agent.
 
 # Map and Display settings
-PIXELS_PER_METER = 100  # Number of pixels per meter for display
-MAP_WIDTH_METERS = 10  # Width of the map in meters
-MAP_HEIGHT_METERS = 10  # Height of the map in meters
-CELL_SIZE_METERS = 0.312500  # Actual cell size in meters
+PIXELS_PER_METER = 200  # Number of pixels per meter for display
+MAP_WIDTH_METERS = 5  # Width of the map in meters
+MAP_HEIGHT_METERS = 5  # Height of the map in meters
+CELL_SIZE_METERS = 0.31250 #0.15625  # Actual cell size in meters
 # CELL_SIZE = int(CELL_SIZE_METERS * PIXELS_PER_METER)  # Size of each cell in pixels (0.31 meters)
 GRID_COLOR = (50, 50, 50)
 CENTERLINE_COLOR = (255, 255, 0)
@@ -26,6 +26,7 @@ OBSTACLE_COLOR = (255, 0, 0)
 FREE_COLOR = (0, 255,0)
 AGENT_COLOR = (255, 0, 0)
 AGENT_PATH_COLOR = (255, 0, 255)  # Color for the agent's path
+ROUTE_COLOR = (0, 255, 255)  # Color for the route
 HEADING_COLOR = (0, 255, 0)
 UNKNOWN_COLOR = (128, 128, 128) # Color for unknown cells
 TRAIL_LENGTH = 10  # Number of previous positions to keep for the trail
@@ -39,6 +40,7 @@ agent_target = (9999, 9999)  # Initial target position in meters (x, y)
 agent_heading = 0.0  # Initial agent heading in degrees
 agent_path = []
 map_data = {}  # (x, y) in cell coordinates, value: 0 (free), 1 (obstacle), None (unknown)
+route = []  # List of tuples (x, y) in cell coordinates. (start, end)
 agent_velocities = {}
 elapsed_ticks = 0
 ticks_per_second = 10
@@ -104,7 +106,7 @@ def calculate_pheromone(visited_time, p_confidence, current_time):
     if visited_time >= current_time:
         return p_confidence
 
-    lambda_ = -math.log(0.5) / 10  # Placeholder for EVAPORATION_TIME_S
+    lambda_ = -math.log(0.5) / 9999999  # Placeholder for EVAPORATION_TIME_S
     time_probability = math.exp(-lambda_ * (current_time - visited_time))  # Exponential decay
     pheromone = time_probability * (p_confidence - 0.5) + 0.5
     assert pheromone >= 0.0 and pheromone <= 1.0, "Pheromone should be between 0 and 1"
@@ -194,27 +196,92 @@ def draw_grid():
         pygame.draw.line(screen, CENTERLINE_COLOR, (map_to_display_coordinates(i, -int(MAP_HEIGHT_METERS/2))), (map_to_display_coordinates(i, MAP_HEIGHT_METERS)))
         pygame.draw.line(screen, CENTERLINE_COLOR, (map_to_display_coordinates(-int(MAP_WIDTH_METERS/2), i)), (map_to_display_coordinates(MAP_WIDTH_METERS, i)))
 
-    
+    #draw coordinates at ends
+    right_coordinate = map_to_display_coordinates(MAP_WIDTH_METERS/2 - 1, 0)
+    text_right = font.render(f"({int(MAP_WIDTH_METERS/2)},0)", True, (255, 255, 255))
+    screen.blit(text_right, (right_coordinate))
+    left_coordinate = map_to_display_coordinates(-MAP_WIDTH_METERS/2, 0)
+    text_left = font.render(f"({-int(MAP_WIDTH_METERS/2)},0)", True, (255, 255, 255))
+    screen.blit(text_left, (left_coordinate))
+    top_coordinate = map_to_display_coordinates(0, MAP_HEIGHT_METERS/2)
+    text_top = font.render(f"(0,{int(MAP_HEIGHT_METERS/2)})", True, (255, 255, 255))
+    screen.blit(text_top, (top_coordinate))
+    bottom_coordinate = map_to_display_coordinates(0, -MAP_HEIGHT_METERS/2+0.5)
+    text_bottom = font.render(f"(0,{-int(MAP_HEIGHT_METERS/2)})", True, (255, 255, 255))
+    screen.blit(text_bottom, (bottom_coordinate))
 
+def find_quadrant(x, y, box_x, box_y, box_size):
+    """
+    Determines which quadrant (sub-box) the point (x, y) belongs to within the given box.
+
+    Args:
+        x: The x-coordinate of the point.
+        y: The y-coordinate of the point.
+        box_x: The x-coordinate of the center of the box.
+        box_y: The y-coordinate of the center of the box.
+        box_size: The size (width/height) of the box.
+
+    Returns:
+        A tuple (new_box_x, new_box_y) representing the center of the sub-box (quadrant)
+        that contains the point (x, y).
+    """
+    half_size = box_size / 2 #mid to edge
+
+    if x == box_x and y == box_y:
+        # Center case
+        return box_x, box_y
+    
+    if x >= box_x and y >= box_y:
+        # Top-right quadrant
+        return box_x + half_size / 2, box_y + half_size / 2
+    elif x < box_x and y >= box_y:
+        # Top-left quadrant
+        return box_x - half_size / 2, box_y + half_size / 2
+    elif x < box_x and y < box_y:
+        # Bottom-left quadrant
+        return box_x - half_size / 2, box_y - half_size / 2
+    elif x >= box_x and y < box_y:
+        # Bottom-right quadrant
+        return box_x + half_size / 2, box_y - half_size / 2
+
+#Recursive if cell_size > CELL_SIZE_M
+def add_to_data_map(x,y, value, box_x, box_y, box_size):
+    if box_size == CELL_SIZE_METERS:
+        map_data[(box_x,box_y)] = value
+    else:
+        quadrant = find_quadrant(x, y, box_x, box_y, box_size)
+        if quadrant == (box_x, box_y):
+            # If the point is in the center, we need to update all quadrants
+            # to the same value.
+            (top_left_box_x, top_left_box_y) = box_x - box_size / 4, box_y + box_size / 4
+            (top_right_box_x, top_right_box_y) = box_x + box_size / 4, box_y + box_size / 4
+            (bottom_left_box_x, bottom_left_box_y) = box_x - box_size / 4, box_y - box_size / 4
+            (bottom_right_box_x, bottom_right_box_y) = box_x + box_size / 4, box_y - box_size / 4
+            add_to_data_map(top_left_box_x, top_left_box_y, value, box_x, box_y, box_size)
+            add_to_data_map(top_right_box_x, top_right_box_y, value, box_x, box_y, box_size)
+            add_to_data_map(bottom_left_box_x, bottom_left_box_y, value, box_x, box_y, box_size)
+            add_to_data_map(bottom_right_box_x, bottom_right_box_y, value, box_x, box_y, box_size)
+            
+        else:
+            new_box_x, new_box_y = quadrant
+            new_box_size = box_size / 2
+            add_to_data_map(x, y, value, new_box_x, new_box_y, new_box_size)
+    
 
 
 def draw_map():
     """Draws the map on the Pygame screen based on the map_data."""
     map_data_copy = dict(map_data)
-    for (cell_x, cell_y), pheromone in map_data_copy.items():
-        for i in range(7):
-            s = MAP_WIDTH_METERS / 2**i
-            if cell_x % s == 0 and cell_y % s == 0:
-                this_cell_size = s * 2
-                break
-
+    for (cell_x, cell_y), confidence in map_data_copy.items():
         display_x, display_y = cell_to_display_coordinates(cell_x, cell_y)
         rect = pygame.Rect(
-            display_x - int(this_cell_size*PIXELS_PER_METER // 2), display_y - int(this_cell_size*PIXELS_PER_METER) // 2, int(this_cell_size*PIXELS_PER_METER), int(this_cell_size*PIXELS_PER_METER)
+            display_x - int(CELL_SIZE_METERS*PIXELS_PER_METER // 2), display_y - int(CELL_SIZE_METERS*PIXELS_PER_METER) // 2, int(CELL_SIZE_METERS*PIXELS_PER_METER), int(CELL_SIZE_METERS*PIXELS_PER_METER)
         )  # Center the rect
         # print(f"confidence: {confidence}")
-        certainty = (pheromone-0.5) * 2
-        color = (255*(1-certainty), 255*(certainty), 0) if certainty > 0 else (255*(-certainty), 255*(1+certainty), 0)
+        pheromone = calculate_pheromone(0, confidence, current_time)
+        # color = (255*(1-certainty), 255*(certainty), 0) if certainty > 0 else (255*(-certainty), 255*(1+certainty), 0)
+        color = (255*(1-pheromone), 255*(pheromone), 0)
+
         # print(f"Pheromone: {pheromone} -> {color}")
         pygame.draw.rect(screen, color, rect)
         #Draw dark green outline of rectangle
@@ -225,7 +292,7 @@ def draw_agent(x_m, y_m, x_t, y_t, heading):
     """Draws the agent as a triangle with its heading, using meters."""
     display_x, display_y = map_to_display_coordinates(x_m, y_m)
     point1 = (display_x, display_y)
-    angle_rad = math.radians(heading)
+    angle_rad = math.radians(-heading)
     # print(f"Agent: {x_m}, {y_m} -> {display_x}, {display_y} -> {heading}")
     #0 degrees is pointing to the right, 90 degrees is pointing up.
 
@@ -251,13 +318,22 @@ def draw_agent_path():
         points = [map_to_display_coordinates(x_m, y_m) for x_m, y_m in agent_path]
         pygame.draw.lines(screen, AGENT_PATH_COLOR, False, points, 2)
 
-
+def draw_route():
+    """Draws the route on the Pygame screen."""
+    if len(route) > 1:
+        points = [cell_to_display_coordinates(x_m, y_m) for x_m, y_m in route]
+        pygame.draw.lines(screen, ROUTE_COLOR, False, points, 2)
+        # Draw circles at the start and end of the route
+        pygame.draw.circle(screen, ROUTE_COLOR, points[0], 5)
+        pygame.draw.circle(screen, ROUTE_COLOR, points[-1], 5)
 
 def on_message(client, userdata, message):
     """Callback function for incoming MQTT messages."""
-    global agent_location, agent_target, agent_heading, map_data, elapsed_ticks, agent_velocities, current_time
+    global agent_location, agent_target, agent_heading, map_data, elapsed_ticks, agent_velocities, current_time, route
     payload = message.payload.decode("utf-8")
-    try:
+    if payload.startswith("<LOG>"):
+        return
+    try:    
         sender_id = get_id_from_message(payload)
         if sender_id != AGENT_ID:
             return
@@ -305,14 +381,30 @@ def on_message(client, userdata, message):
                         #     map_data[(x, y)] = 1
                         # elif confidence < -0.5:
                         #     map_data[(x, y)] = 0
-                        pheromone = calculate_pheromone(timestamp, confidence, current_time)
-                        map_data[(x, y)] = pheromone
+                        add_to_data_map(x, y, confidence, 0, 0, MAP_WIDTH_METERS)
             except Exception as e:
                 #print stacktrace
                 traceback.print_exc()
                 print(f"Error parsing M message: {e}, content: {message_content}")
         elif message_content.startswith("T:"):
             pass
+        elif message_content.startswith("R:"):
+            print(f"Route message: {message_content}")
+            #Draw route
+            route.clear()
+            chunks = message_content[2:].split("|")
+            print(f"Chunks: {chunks}")
+            for chunk in chunks:
+                if chunk != "":
+                    start,end = chunk.split(":")
+                    print(f"Start: {start}, End: {end}")
+                    start_x, start_y = parse_coordinate(start)
+                    end_x, end_y = parse_coordinate(end)
+                    route.append((start_x, start_y))
+                    route.append((end_x, end_y))
+
+
+            
         else:
             print(f"Unknown message type: {message_content}")
     except Exception as e:
@@ -326,7 +418,8 @@ def initialize_pygame():
     pygame.init()
     screen = pygame.display.set_mode((MAP_WIDTH_METERS*PIXELS_PER_METER, MAP_HEIGHT_METERS*PIXELS_PER_METER))
     pygame.display.set_caption("MQTT Map Visualizer")
-    font = pygame.font.Font(None, 24)
+    pygame.font.init()
+    font = pygame.font.SysFont("Arial", 36)  # Font name, size
     pygame_initialized = True
 
 def cleanup_pygame():
@@ -336,7 +429,7 @@ def cleanup_pygame():
 
 def main():
     """Main function to initialize MQTT client and Pygame."""
-    global agent_location, agent_target, agent_heading, agent_path, elapsed_ticks, ticks_per_second, current_time
+    global agent_location, agent_target, agent_heading, agent_path, elapsed_ticks, ticks_per_second, current_time, route
 
     client = mqtt.Client()
     client.on_message = on_message
@@ -350,6 +443,12 @@ def main():
 
         # map_data[(0.15625, 0.15625)] = 1
         # map_data[(0.3125, 0.3125)] = 1
+        # add_to_data_map(0.625, 0.625, 1, 0, 0, MAP_WIDTH_METERS)
+        # add_to_data_map(0.3125, 0.3125, 0.75, 0, 0, MAP_WIDTH_METERS)
+
+        # add_to_data_map(0.15625, 0.15625, 0.5, 0, 0, MAP_WIDTH_METERS)
+        # add_to_data_map(0.078125, 0.078125, 0.25, 0, 0, MAP_WIDTH_METERS)
+        
 
         running = True
         while running:
@@ -368,7 +467,8 @@ def main():
                 if agent_velocities:
                   first_agent_id = next(iter(agent_velocities))
                   velocity_x, velocity_y = agent_velocities[first_agent_id]
-                  agent_heading = math.degrees(math.atan2(velocity_x, velocity_y)) % 360
+                  agent_heading = math.degrees(math.atan2(velocity_y, velocity_x)) % 360
+                  print(f"heading: {agent_heading}")
                 #   agent_location = (agent_location[0] + velocity_x * 0.1, agent_location[1] + velocity_y * 0.1) # move by 0.1 meters per second.
                 #   agent_heading = (agent_heading + 5) % 360
                   agent_path.append(agent_location)
@@ -378,8 +478,10 @@ def main():
             screen.fill((0, 0, 0))
             draw_grid()
             draw_map()
+            # map_data.clear()
             draw_agent_path()
             draw_agent(*agent_location, *agent_target, agent_heading)
+            draw_route()
             #draw coordinate (0,0)
             pygame.draw.circle(screen, (255, 255, 0), map_to_display_coordinates(0, 0), 5)
             # for i in range(15):
@@ -393,14 +495,19 @@ def main():
             # #draw coordinate (5,5)
             # pygame.draw.circle(screen, (255, 255, 0), map_to_display_coordinates(4, 4), 5)
 
+            pygame.draw.circle(screen, (255, 255, 0), cell_to_display_coordinates(-3.5, 1.4), 5)
+
             #publish message
-            client.publish(MQTT_TOPIC, f"<A>[1235151]C:{agent_location[0]};{agent_location[1]}|999999999;999999999")
+            client.publish(MQTT_TOPIC, f"<A>[1235151]C:99999;99999|999999999;999999999")
 
             text_surface = font.render(f"Agent: {AGENT_ID}", True, (255, 255, 255))
             screen.blit(text_surface, (10, 10))
 
+            text_current_time = font.render(f"Current time: {current_time}", True, (255, 255, 255))
+            screen.blit(text_current_time, (10, 50))
+
             pygame.display.flip()
-            time.sleep(0.1)
+            time.sleep(1 / ticks_per_second)
 
     except Exception as e:
         print(f"Error in main loop: {e}")

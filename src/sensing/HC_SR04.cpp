@@ -64,119 +64,120 @@ HC_SR04::HC_SR04(uint8_t triggerPin, uint8_t echoPin) {
 
     // // Set up interrupts for the ECHO pin
     // // Only set the callback once
-    // static bool callback_set = false;
-    // if (!callback_set) {
-    //     gpio_set_irq_callback(gpio_callback);
-    //     callback_set = true;
-    // }
+    static bool callback_set = false;
+    if (!callback_set) {
+        gpio_set_irq_callback(gpio_callback);
+        callback_set = true;
+    }
     
-    // gpio_set_irq_enabled(this->echoPin, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
-    // irq_set_enabled(IO_IRQ_BANK0, true);
+    gpio_set_irq_enabled(this->echoPin, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
+    irq_set_enabled(IO_IRQ_BANK0, true);
 }
 // Measure distance using the HC-SR04 sensor, in meters
-// float HC_SR04::measureDistance() {
-//     // Send a 10us pulse to the TRIGGER pin
-//     taskENTER_CRITICAL();
-//     gpio_put(this->triggerPin, 1);
-//     sleep_us(10);
-//     gpio_put(this->triggerPin, 0);
-//     this->valid_value = false;
-//     absolute_time_t start_time = get_absolute_time();
-//     taskEXIT_CRITICAL();
-//     // Wait for a valid measurement
-//     uint32_t timeout = 12000;//11600; // Timeout in microseconds (max range ~2m)
-
-//     while (!this->valid_value) {
-//         // Check if we've exceeded the timeout
-//         if (absolute_time_diff_us(start_time, get_absolute_time()) > timeout) {
-//             setDistance(2.0f); // Out of range or timeout
-//             return 2.0f;
-//         }
-//         // Yield to allow other threads to execute
-//         // sleep_us(100); // Small delay to reduce CPU usage and allow multitasking
-//         vTaskDelay(1);
-//     }
-
-//     // Calculate the distance
-//     uint64_t pulse_duration;
-    
-//     if (xSemaphoreTake(this->dataMutex, portMAX_DELAY) == pdTRUE) {
-//         pulse_duration = this->echo_end - this->echo_start;
-//         xSemaphoreGive(this->dataMutex);
-//     } else {
-//         return 2.0f; // Failed to acquire mutex, return an error value
-//     }
-
-//     // Validate the measurement
-//     if (pulse_duration > timeout || pulse_duration < 100) {
-//         // Invalid measurement (too long or too short)
-//         setDistance(2.0f);
-//         return 2.0f;
-//     }
-
-//     // Calculate the distance in cm
-//     float distance = (pulse_duration / 2.0f) / 29.1f; // Speed of sound: 343m/s
-//     // printf("pulse_duration: %llu, distance: %f\n", pulse_duration, distance);
-
-//     float inM = distance / 100.0f; // Convert to meters
-//     setDistance(std::min(inM, 2.0f));;
-//     return inM;
-// }
-
-// Measure distance using busy waiting, in meters
-float HC_SR04::measureDistance() {
-    uint64_t pulse_duration = 0;
-    bool echo_received = false;
-
+float HC_SR04::measureDistance(float distanceComp) {
     // Send a 10us pulse to the TRIGGER pin
     taskENTER_CRITICAL();
     gpio_put(this->triggerPin, 1);
     sleep_us(10);
     gpio_put(this->triggerPin, 0);
+    this->valid_value = false;
     absolute_time_t start_time = get_absolute_time();
     taskEXIT_CRITICAL();
+    // Wait for a valid measurement
+    uint32_t timeout = 12000;//11600; // Timeout in microseconds (max range ~2m)
 
-    // Wait for the ECHO pin to go high with a timeout
-    uint32_t timeout = 12000; // Timeout in microseconds (max range ~2m)
-    while (!gpio_get(this->echoPin)) {
+    while (!this->valid_value) {
+        // Check if we've exceeded the timeout
         if (absolute_time_diff_us(start_time, get_absolute_time()) > timeout) {
-            setDistance(2.0f);
-            return 2.0f; // Timeout
+            setDistance(2.0f); // Out of range or timeout
+            return 2.0f;
         }
-        vTaskDelay(1); // Yield to other tasks
+        // Yield to allow other threads to execute
+        // sleep_us(100); // Small delay to reduce CPU usage and allow multitasking
+        vTaskDelay(1);
     }
 
-    // Measure the duration of the ECHO pulse
-    uint64_t echo_start_time = time_us_64();
-    while (gpio_get(this->echoPin)) {
-        if (absolute_time_diff_us(start_time, get_absolute_time()) > timeout) {
-            setDistance(2.0f);
-            return 2.0f; // Timeout during high pulse
-        }
-        vTaskDelay(1); // Yield to other tasks
-        echo_received = true;
-    }
-    uint64_t echo_end_time = time_us_64();
-
-    if (echo_received) {
-        pulse_duration = echo_end_time - echo_start_time;
-
-        // Validate the measurement
-        if (pulse_duration > timeout || pulse_duration < 100) {
-            setDistance(2.0f);
-            return 2.0f; // Invalid measurement
-        }
-
-        // Calculate the distance in cm
-        float distance_cm = (pulse_duration / 2.0f) / 29.1f; // Speed of sound: 343m/s
-        float distance_m = distance_cm / 100.0f;
-        setDistance(std::min(distance_m, 2.0f));
-        return distance_m;
+    // Calculate the distance
+    uint64_t pulse_duration;
+    
+    if (xSemaphoreTake(this->dataMutex, portMAX_DELAY) == pdTRUE) {
+        pulse_duration = this->echo_end - this->echo_start;
+        xSemaphoreGive(this->dataMutex);
     } else {
-        setDistance(2.0f);
-        return 2.0f; // No echo received (should have timed out)
+        return 2.0f; // Failed to acquire mutex, return an error value
     }
+
+    // Validate the measurement
+    if (pulse_duration > timeout || pulse_duration < 100) {
+        // Invalid measurement (too long or too short)
+        setDistance(2.0f);
+        return 2.0f;
+    }
+
+    // Calculate the distance in cm
+    float distance = (pulse_duration / 2.0f) / 29.1f; // Speed of sound: 343m/s
+    // printf("pulse_duration: %llu, distance: %f\n", pulse_duration, distance);
+
+    float inM = distance / 100.0f + distanceComp; // Convert to meters, add compensation for sensor pos
+    // printf("measured dist: %f, actual dist: %f\n", distance/100.0f, inM);
+    setDistance(std::min(inM, 2.0f));;
+    return inM;
 }
+
+// Measure distance using busy waiting, in meters
+// float HC_SR04::measureDistance() {
+//     uint64_t pulse_duration = 0;
+//     bool echo_received = false;
+
+//     // Send a 10us pulse to the TRIGGER pin
+//     taskENTER_CRITICAL();
+//     gpio_put(this->triggerPin, 1);
+//     sleep_us(10);
+//     gpio_put(this->triggerPin, 0);
+//     absolute_time_t start_time = get_absolute_time();
+//     taskEXIT_CRITICAL();
+
+//     // Wait for the ECHO pin to go high with a timeout
+//     uint32_t timeout = 12000; // Timeout in microseconds (max range ~2m)
+//     while (!gpio_get(this->echoPin)) {
+//         if (absolute_time_diff_us(start_time, get_absolute_time()) > timeout) {
+//             setDistance(2.0f);
+//             return 2.0f; // Timeout
+//         }
+//         vTaskDelay(1); // Yield to other tasks
+//     }
+
+//     // Measure the duration of the ECHO pulse
+//     uint64_t echo_start_time = time_us_64();
+//     while (gpio_get(this->echoPin)) {
+//         if (absolute_time_diff_us(start_time, get_absolute_time()) > timeout) {
+//             setDistance(2.0f);
+//             return 2.0f; // Timeout during high pulse
+//         }
+//         vTaskDelay(1); // Yield to other tasks
+//         echo_received = true;
+//     }
+//     uint64_t echo_end_time = time_us_64();
+
+//     if (echo_received) {
+//         pulse_duration = echo_end_time - echo_start_time;
+
+//         // Validate the measurement
+//         if (pulse_duration > timeout || pulse_duration < 100) {
+//             setDistance(2.0f);
+//             return 2.0f; // Invalid measurement
+//         }
+
+//         // Calculate the distance in cm
+//         float distance_cm = (pulse_duration / 2.0f) / 29.1f; // Speed of sound: 343m/s
+//         float distance_m = distance_cm / 100.0f;
+//         setDistance(std::min(distance_m, 2.0f));
+//         return distance_m;
+//     } else {
+//         setDistance(2.0f);
+//         return 2.0f; // No echo received (should have timed out)
+//     }
+// }
 
 double HC_SR04::getDistance() const { 
     // return this->latestDistance; 

@@ -2,6 +2,7 @@
 #include "../pins.h"
 #include "pico/stdlib.h"
 #include "hardware/pwm.h"
+#include "hardware/clocks.h"
 
 
 MotorController::MotorController(){
@@ -21,17 +22,24 @@ MotorController::MotorController(){
     slice_right_1A = pwm_gpio_to_slice_num(RIGHT_1A);
     slice_right_1B = pwm_gpio_to_slice_num(RIGHT_1B);
     
+    float target_frequency = 1470.0f;//490.0f;
+    uint32_t wrap = 255;
+    //Get clock frequency
+    uint32_t clock_frequency = clock_get_hz(clk_sys);
+
+    float divider = clock_frequency / (target_frequency * (wrap + 1));
+
     // Set the PWM frequency (e.g., 20 kHz)
-    pwm_set_clkdiv(slice_left_1A, 10.0f);  // Adjust this based on your desired frequency
-    pwm_set_clkdiv(slice_left_1B, 10.0f);
-    pwm_set_clkdiv(slice_right_1A, 10.0f);
-    pwm_set_clkdiv(slice_right_1B, 10.0f);
+    pwm_set_clkdiv(slice_left_1A, divider);  // Adjust this based on your desired frequency
+    pwm_set_clkdiv(slice_left_1B, divider);
+    pwm_set_clkdiv(slice_right_1A, divider);
+    pwm_set_clkdiv(slice_right_1B, divider);
 
     // Set the PWM wrap value (8-bit resolution: 255)
-    pwm_set_wrap(slice_left_1A, 255);
-    pwm_set_wrap(slice_left_1B, 255);
-    pwm_set_wrap(slice_right_1A, 255);
-    pwm_set_wrap(slice_right_1B, 255);
+    pwm_set_wrap(slice_left_1A, wrap);
+    pwm_set_wrap(slice_left_1B, wrap);
+    pwm_set_wrap(slice_right_1A, wrap);
+    pwm_set_wrap(slice_right_1B, wrap);
 
     // Enable PWM on each slice
     pwm_set_enabled(slice_left_1A, true);

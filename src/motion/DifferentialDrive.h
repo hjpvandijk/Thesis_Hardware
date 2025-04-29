@@ -40,8 +40,10 @@ public:
 
 private:
     MotorController motorController;
-    double forwardRPM = 150;   // Target RPM (Adjust this to your desired RPM)
-    double turnRPM = 15;
+    double forwardRPM_L = 210;//210;   // Target RPM (Adjust this to your desired RPM)
+    double forwardRPM_R = 210;//210;
+    double turnRPM_L = 210;//220;
+    double turnRPM_R = 210;//220;
     
     
     

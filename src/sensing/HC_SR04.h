@@ -10,7 +10,7 @@ class HC_SR04 {
 public:
     HC_SR04() = default; // Default constructor
     HC_SR04(uint8_t triggerPin, uint8_t echoPin);
-    float measureDistance();
+    float measureDistance(float distanceComp);
     double getDistance() const;
     void setDistance(double distance);
     static void echo_irq_handler(uint gpio, uint32_t events, HC_SR04* instance);

@@ -40,6 +40,7 @@
 #include "AgentExecutor.h"
 #include "lwip/stats.h"
 
+bool LED_STATE = true;
 
 
 
@@ -51,7 +52,7 @@
 #error "WIFI_PASSWORD not defined"
 #endif
 
-#define TASK_PRIORITY     ( tskIDLE_PRIORITY + 1UL )
+#define TASK_PRIORITY     ( tskIDLE_PRIORITY + 3UL )
 #define BUF_LEN					2048
 
 pico_unique_board_id_t id;
@@ -223,12 +224,17 @@ std::string getPicoUniqueID() {
   return std::string(buffer);
 }
 
-size_t getTotalHeapSize() {
-    extern char __StackLimit; // Defined by the linker script
-    extern char __bss_end__; // Defined by the linker script
+size_t getPotentialHeapSize() {
+    extern char __StackLimit;
+    extern char __bss_end__;
 
-    size_t totalHeapSize = &__StackLimit - &__bss_end__;
-    return totalHeapSize;
+    // Assuming stack grows downwards, __StackLimit is the higher address
+    // and __bss_end__ is the lower address. You might need to reverse
+    // this depending on your linker script.
+
+    // This gives the region between the end of BSS and the stack limit.
+    size_t potentialHeapSize = (uintptr_t)&__StackLimit - (uintptr_t)&__bss_end__;
+    return potentialHeapSize;
 }
 
 void main_task(void* params){
@@ -246,6 +252,7 @@ void main_task(void* params){
     return;
   }
 
+  cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, LED_STATE);
 
   printf("Connecting to WiFi... %s \n", WIFI_SSID);
 
@@ -282,90 +289,103 @@ void main_task(void* params){
   printf("Making radio\n");
   Radio radio(&mqttClient);
 
-  // UARTHandler uartHandler;
-  // uartHandler.start("uart", TASK_PRIORITY+1, 0);
+  UARTHandler uartHandler;
+  uartHandler.start("uart", TASK_PRIORITY+1, 0);
 
-  // MotorController motorController;
+  MotorController motorController;
 
-  // bool motorsRunning = true;
+  bool motorsRunning = true;
 
-  // DistanceSensorHandler distanceSensorHandler;
-  // distanceSensorHandler.start("distance", TASK_PRIORITY + 10, 1);
-  // printf("creating agent\n");
+  DistanceSensorHandler distanceSensorHandler;
+  distanceSensorHandler.start("distance", TASK_PRIORITY + 10, 1);
+  printf("creating agent\n");
 
-  // AgentExecutor agentExecutor(uniqueID);
-  // agentExecutor.agent.setWifi(radio);
+  AgentExecutor agentExecutor(uniqueID);
+  agentExecutor.agent.setWifi(radio);
 
-  //Set agent hc_sr04 sensors to distancesensorhandler sensors
+  // Set agent hc_sr04 sensors to distancesensorhandler sensors
   // for (int i = 0; i < 4; i++) {
   //   agent.distance_sensors[i] = distanceSensorHandler.sensors[i];
   // }
-  // agentExecutor.agent.setDistanceSensorHandler(&distanceSensorHandler);
+  agentExecutor.agent.setDistanceSensorHandler(&distanceSensorHandler);
 
-  // if (!agentExecutor.start("agent", TASK_PRIORITY + 1, 0)) {
-  //     printf("Failed to start agent task!\n");
-  // }  
+  if (!agentExecutor.start("agent", TASK_PRIORITY -1, 0)) {
+      printf("Failed to start agent task!\n");
+  }  
   printf("starting loop\n");
   int i = 0;
-  // double x = -4;
-  // double y = -4;
-  // double x_step = 0;
-  // double y_step = 0.1;
+  double x = -2;
+  double y = -2;
+  double x_step = 0;
+  double y_step = 0.1;
+  double heading = 0;
+  double heading_step = 0.05;
   while (true){
+    // LED_STATE = !LED_STATE;
+    // cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, LED_STATE);
     // printf("Main task running\n");
     // agentExecutor.agent.setPosition(uartHandler.getPosition().x, uartHandler.getPosition().y);
-    // agentExecutor.agent.setPosition({0.5,0.5});
     // agentExecutor.agent.setHeading(uartHandler.getHeading());
-    // printf("heading: %f\n", ToDegrees(uartHandler.getHeading()));
-    // x += x_step; 
-    // y += y_step;
-    // printf("Agent position: %f, %f\n", x, y);
-    // printf("%d, %d\n", x == -4, y == 4);
-    // if ((abs(x+4) < 1e-6) && (abs(y-4) < 1e-6)){ // x==-4 && y==4
-    //   x_step = 0.1;
-    //   y_step = 0;
-    // } else if (abs(x-4) < 1e-6 && abs(y-4) < 1e-6){ // x==4 && y==44
-    //   x_step = 0;
-    //   y_step = -0.1;
-    // } else if (abs(x-4) < 1e-6 && abs(y+4) < 1e-6){ // x==4 && y==-4
-    //   x_step = -0.1;
-    //   y_step = 0;
-    // } else if (abs(x+4) < 1e-6 && abs(y+4) < 1e-6){ // x==-4 && y==-4
-    //   x_step = 0;
-    //   y_step = 0.1;
-    // }
-    // if (i%20==0){
-    // runTimeStats();
-    // size_t freeHeapSize = xPortGetFreeHeapSize();
-    // printf("Free heap size: %zu\n", freeHeapSize);
-    // size_t totalHeapSize = getTotalHeapSize();
-    // printf("Total heap size: %zu\n", totalHeapSize);
 
+    // printf("heading: %f\n", ToDegrees(uartHandler.getHeading()));
+
+    agentExecutor.agent.setPosition(x, y);
+    agentExecutor.agent.setHeading(argos::CRadians(heading));
+    x += x_step; 
+    y += y_step;
+    heading += heading_step;
+    if (heading > 3.14){
+      heading = -3.13;
+    }
+    printf("Agent position: %f, %f\n", x, y);
+    printf("%d, %d\n", x == -4, y == 4);
+    if ((abs(x+2) < 1e-6) && (abs(y-2) < 1e-6)){ // x==-2 && y==2
+      x_step = 0.1;
+      y_step = 0;
+    } else if (abs(x-2) < 1e-6 && abs(y-2) < 1e-6){ // x==2 && y==2
+      x_step = 0;
+      y_step = -0.1;
+    } else if (abs(x-2) < 1e-6 && abs(y+2) < 1e-6){ // x==2 && y==-2
+      x_step = -0.1;
+      y_step = 0;
+    } else if (abs(x+2) < 1e-6 && abs(y+2) < 1e-6){ // x==-2 && y==-2
+      x_step = 0;
+      y_step = 0.1;
+    }
+    // if (i%100==0){
+    // // runTimeStats();
+    // size_t freeHeapSize = xPortGetFreeHeapSize();
+    // // printf("Free heap size: %zu\n", freeHeapSize);
+    // size_t totalHeapSize = getPotentialHeapSize();
+    // // printf("Total heap size: %zu\n", totalHeapSize);
+    // std::string freeheapsize = std::to_string(freeHeapSize) + " / " + std::to_string(totalHeapSize);
+    // radio.send_message(freeheapsize, "LOG");
+    // // printf("main thread running: %d\n", i);
     // // printf("LWIP:\n");
     // // runTimeStatsLWIP();
     
     // }
-
+    // i++;
     // std::string message = "Hello World " + std::to_string(i++);
     // radio.send_message(message, "agent1");
 
-    std::string message1 = "[7E6E2E794F85C86F]C:0.000000;0.000000|0.314405;0.020960 " + std::to_string(i);
-    std::string message2 = "[7E6E2E794F85C86F]V:1.000000;0.000000 " + std::to_string(i++);
-    std::string message3 = "[7E6E2E794F85C86F]M:-0.781250;2.656250:2.017475@8.750000|-0.312500;2.812500:2.153790@94.500000|-0.312500;2.187500:2.168239@94.500000|-0.156250;1.718750:2.197224@94.500000|-0.156250;1.406250:2.197224@93.250000|-1.718750;0.781250:2.197224@94.500000|-1.406250;0.781250:2.197224@94.500000|-2.031250;0.468750:1.282117@89.187500|-1.562500;0.312500:2.172665@94.500000|-1.093750;0.781250:2.197224@94.500000|1.406250;1.406250:2.197224@94.500000|1.718750;1.406250:-2.944439@94.500000";
-    std::string message4 = "[7E6E2E794F85C86F]M:-0.781250;0.781250:2.197224@94.500000|-0.312500;0.937500:2.172207@94.500000|-1.093750;0.468750:2.197224@93.250000|-0.781250;0.468750:2.197224@92.375000|-1.093750;0.156250:2.197224@26.875000|-0.468750;0.468750:2.197224@91.812500|-0.156250;0.468750:2.197224@26.875000|0.156250;2.031250:0.746978@94.375000|0.156250;1.718750:2.197224@94.500000|0.156250;1.406250:2.197224@94.500000|0.781250;1.406250:2.197224@94.375000|1.093750;1.406250:2.197224@94.500000|1.718750;1.718750:-2.944439@4.687500";
-    // std::string message3 = "[7E6E2E794F85C86F]M:-0.781250;2.656250:2.017475@8.750000|-0.312500;2.812500:2.153790@94.500000|-0.312500;2.187500:2.168239@94.500000|-0.156250;1.718750:2.197224@94.500000|-0.156250;1.406250:2.197224@93.250000|-1.718750;0.781250:2.197224@94.500000|-1.406250;0.781250:2.197224@94.500000|-2.031250;0.468750:1.282117@89.187500|-1.562500;0.312500:2.172665@94.500000|-1.093750;0.781250:2.197224@94.500000|-0.781250;0.781250:2.197224@94.500000|-0.312500;0.937500:2.172207@94.500000|-1.093750;0.468750:2.197224@93.250000|-0.781250;0.468750:2.197224@92.375000|-1.093750;0.156250:2.197224@26.875000|-0.468750;0.468750:2.197224@91.812500|-0.156250;0.468750:2.197224@26.875000|0.156250;2.031250:0.746978@94.375000|0.156250;1.718750:2.197224@94.500000|0.156250;1.406250:2.197224@94.500000|0.781250;1.406250:2.197224@94.375000|1.093750;1.406250:2.197224@94.500000|1.718750;1.718750:-2.944439@4.687500|1.406250;1.406250:2.197224@94.500000|1.718750;1.406250:-2.944439@94.500000";
-    radio.broadcast_message(message1);
-    radio.broadcast_message(message2);
-    if (i%10*5 == 0){ 
-      radio.broadcast_message(message3);
-      radio.broadcast_message(message4);
-      radio.broadcast_message(message3);
-      radio.broadcast_message(message4);
-      radio.broadcast_message(message3);
+    // std::string message1 = "[7E6E2E794F85C86F]C:0.000000;0.000000|0.314405;0.020960 " + std::to_string(i);
+    // std::string message2 = "[7E6E2E794F85C86F]V:1.000000;0.000000 " + std::to_string(i++);
+    // std::string message3 = "[7E6E2E794F85C86F]M:-0.781250;2.656250:2.017475@8.750000|-0.312500;2.812500:2.153790@94.500000|-0.312500;2.187500:2.168239@94.500000|-0.156250;1.718750:2.197224@94.500000|-0.156250;1.406250:2.197224@93.250000|-1.718750;0.781250:2.197224@94.500000|-1.406250;0.781250:2.197224@94.500000|-2.031250;0.468750:1.282117@89.187500|-1.562500;0.312500:2.172665@94.500000|-1.093750;0.781250:2.197224@94.500000|1.406250;1.406250:2.197224@94.500000|1.718750;1.406250:-2.944439@94.500000";
+    // std::string message4 = "[7E6E2E794F85C86F]M:-0.781250;0.781250:2.197224@94.500000|-0.312500;0.937500:2.172207@94.500000|-1.093750;0.468750:2.197224@93.250000|-0.781250;0.468750:2.197224@92.375000|-1.093750;0.156250:2.197224@26.875000|-0.468750;0.468750:2.197224@91.812500|-0.156250;0.468750:2.197224@26.875000|0.156250;2.031250:0.746978@94.375000|0.156250;1.718750:2.197224@94.500000|0.156250;1.406250:2.197224@94.500000|0.781250;1.406250:2.197224@94.375000|1.093750;1.406250:2.197224@94.500000|1.718750;1.718750:-2.944439@4.687500";
+    // // std::string message3 = "[7E6E2E794F85C86F]M:-0.781250;2.656250:2.017475@8.750000|-0.312500;2.812500:2.153790@94.500000|-0.312500;2.187500:2.168239@94.500000|-0.156250;1.718750:2.197224@94.500000|-0.156250;1.406250:2.197224@93.250000|-1.718750;0.781250:2.197224@94.500000|-1.406250;0.781250:2.197224@94.500000|-2.031250;0.468750:1.282117@89.187500|-1.562500;0.312500:2.172665@94.500000|-1.093750;0.781250:2.197224@94.500000|-0.781250;0.781250:2.197224@94.500000|-0.312500;0.937500:2.172207@94.500000|-1.093750;0.468750:2.197224@93.250000|-0.781250;0.468750:2.197224@92.375000|-1.093750;0.156250:2.197224@26.875000|-0.468750;0.468750:2.197224@91.812500|-0.156250;0.468750:2.197224@26.875000|0.156250;2.031250:0.746978@94.375000|0.156250;1.718750:2.197224@94.500000|0.156250;1.406250:2.197224@94.500000|0.781250;1.406250:2.197224@94.375000|1.093750;1.406250:2.197224@94.500000|1.718750;1.718750:-2.944439@4.687500|1.406250;1.406250:2.197224@94.500000|1.718750;1.406250:-2.944439@94.500000";
+    // radio.broadcast_message(message1);
+    // radio.broadcast_message(message2);
+    // if (i%16*5 == 0){ 
+    //   radio.broadcast_message(message3);
+    //   radio.broadcast_message(message4);
+    //   radio.broadcast_message(message3);
+    //   radio.broadcast_message(message4);
+    //   radio.broadcast_message(message3);
       
-    }
+    // }
 
-// if (i%40 == 0) {
+// if (i%10 == 0) {
 // for (int i = 0; i < 4; i++) {
 //       // if (i != 1) continue;
 //       float distance = distanceSensorHandler.getDistance(i);
@@ -421,7 +441,7 @@ void main_task(void* params){
     //     printf("Failed to connect to Wifi \n");
     //   }
     // }
-    vTaskDelay((1000/10)/portTICK_PERIOD_MS);
+    vTaskDelay((1000/16)/portTICK_PERIOD_MS);
 
 
   }

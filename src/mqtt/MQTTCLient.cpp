@@ -43,6 +43,8 @@ std::string MQTTClient::incomingBuffer;
 
 bool mqtt_ready_to_send = true;
 volatile int inflight_messages = 0;
+volatile int unsuccesfulmessages = 0;
+volatile int succesfulmessages = 0;
 int ticks_not_ready = 0;
 
 int sentMessages = 0;
@@ -73,11 +75,16 @@ void MQTTClient::run() {
         printf("Failed to create MQTT client\n");
         return;
     }
+    TickType_t xLastWakeTime = xTaskGetTickCount();
 
     // Initial connection
     tryConnect(client);
-
+    int i=0;
     while (true) {
+        // if (i%100 == 0) {
+        //     printf("MQTTClient running: %d / %d succesful\n", succesfulmessages, unsuccesfulmessages + succesfulmessages);
+        // }
+        // i++;
         if (!isConnected(client)) {
             // printf("Disconnected. Reconnecting...\n");
             tryConnect(client);
@@ -87,7 +94,10 @@ void MQTTClient::run() {
             sendMessages(); // Send messages from the queue if connected
             // printf("Sent messages\n");
         }
-        vTaskDelay(1000/100);  
+        // vTaskDelay((1000/16)/portTICK_PERIOD_MS);  
+
+        vTaskDelayUntil(&xLastWakeTime, (1000/16) / portTICK_PERIOD_MS);
+
     }
 }
 
@@ -114,7 +124,9 @@ void MQTTClient::mqtt_pub_request_cb(void *arg, err_t result)
       if(result == ERR_OK) {
         // printf("Publish ok from cb\n");
         mqtt_ready_to_send = true;
+        succesfulmessages++;
       } else {
+        unsuccesfulmessages++;
         // printf("Publish failed from cb: %d\n", result);
         mqtt_ready_to_send = false;
       }
@@ -137,7 +149,8 @@ void MQTTClient::publish_message_internal(mqtt_client_t *client, void *arg) {
     inflight_messages++;
     sentMessages++;
     if(err != ERR_OK) {
-        printf("Publish err (callback): %d\n", err);
+        unsuccesfulmessages++;
+        // printf("Publish err (callback): %d\n", err);
         mqtt_ready_to_send = false;
         free(ctx->payload);
         delete ctx;
@@ -163,6 +176,7 @@ void MQTTClient::publish_message(mqtt_client_t *client, const char* pub_payload)
 
     err_t err = tcpip_callback(publish_message_static_wrapper, wrapper_ctx);
     if (err != ERR_OK) {
+        unsuccesfulmessages++;
         printf("tcpip_callback failed: %d\n", err);
         free(publish_ctx->payload);
         delete publish_ctx;
@@ -279,7 +293,11 @@ bool MQTTClient::isConnected(mqtt_client_t *client) {
 }
 
 bool MQTTClient::tryConnect(mqtt_client_t *client) {
+    if (xSemaphoreDNSReady != NULL) {
+        vSemaphoreDelete(xSemaphoreDNSReady);
+    }
     xSemaphoreDNSReady = xSemaphoreCreateBinary();
+
     if (xSemaphoreDNSReady == NULL) {
         printf("Failed to create semaphore\n");
         return false;
@@ -325,12 +343,18 @@ bool MQTTClient::tryConnect(mqtt_client_t *client) {
     return true;
 }
 
+// int j = 0;
+
 void MQTTClient::sendMessages() {
+    // j++;
     if (mqttSendQueue != NULL) {
         char* message;
         bool ready = false;
         // printf("messages in queue: %d\n", uxQueueMessagesWaiting(mqttSendQueue));
-        while (mqtt_ready_to_send && inflight_messages < 10000) {
+        while (mqtt_ready_to_send && inflight_messages < 20) {
+            // if (j % 30 == 0) {
+            //     printf("trying to send\n");
+            // }
             if (xQueueReceive(mqttSendQueue, &message, 0) == pdTRUE) {
                 ready = true;
                 // printf("Sending message\n");
@@ -360,6 +384,7 @@ void MQTTClient::addMessageToSend(std::string message){
     // const char* messagePtr = message.c_str();
     if (xQueueSend(mqttSendQueue, &messagePtr, 2) != pdTRUE){
         // printf("Failed to send message to queue\n");
+        unsuccesfulmessages++;
         free(messagePtr); // Free the allocated memory if sending fails
     }
     // printf("Added message to send queue: %d\n", uxQueueMessagesWaiting(mqttSendQueue));
