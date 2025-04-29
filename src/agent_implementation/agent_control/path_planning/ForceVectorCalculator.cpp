@@ -92,7 +92,7 @@ argos::CVector2 ForceVectorCalculator::calculateAgentAvoidanceVector(Agent* agen
 
     Coordinate averageNeighborLocation = {0, 0};
 
-    bool neighborsWithinRange = false;//getAverageNeighborLocation(agent, &averageNeighborLocation, agent->config.AGENT_AVOIDANCE_RADIUS);
+    bool neighborsWithinRange = getAverageNeighborLocation(agent, &averageNeighborLocation, agent->config.AGENT_AVOIDANCE_RADIUS);
     if (!neighborsWithinRange) {
         return {0, 0};
     }

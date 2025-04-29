@@ -56,7 +56,7 @@ MQTTClient::MQTTClient(std::string id) {
     if (mqttSendQueue == NULL) {
         printf("Failed to create send queue\n");
     }
-    mqttIncomingQueue = xQueueCreate(50, sizeof(std::string*));
+    mqttIncomingQueue = xQueueCreate(100, sizeof(std::string*));
     if (mqttIncomingQueue == NULL) {
         printf("Failed to create incoming queue\n");
     }
@@ -81,10 +81,10 @@ void MQTTClient::run() {
     tryConnect(client);
     int i=0;
     while (true) {
-        // if (i%100 == 0) {
-        //     printf("MQTTClient running: %d / %d succesful\n", succesfulmessages, unsuccesfulmessages + succesfulmessages);
-        // }
-        // i++;
+        if (i%100 == 0) {
+            printf("MQTTClient running: %d / %d succesful\n", succesfulmessages, unsuccesfulmessages + succesfulmessages);
+        }
+        i++;
         if (!isConnected(client)) {
             // printf("Disconnected. Reconnecting...\n");
             tryConnect(client);
@@ -108,7 +108,7 @@ void MQTTClient::run() {
 * @return - words
 */
 configSTACK_DEPTH_TYPE MQTTClient::getMaxStackSize(){
-	return 2000;
+	return 1000;
 }
 
 
@@ -177,7 +177,7 @@ void MQTTClient::publish_message(mqtt_client_t *client, const char* pub_payload)
     err_t err = tcpip_callback(publish_message_static_wrapper, wrapper_ctx);
     if (err != ERR_OK) {
         unsuccesfulmessages++;
-        printf("tcpip_callback failed: %d\n", err);
+        // printf("tcpip_callback failed: %d\n", err);
         free(publish_ctx->payload);
         delete publish_ctx;
         delete wrapper_ctx;

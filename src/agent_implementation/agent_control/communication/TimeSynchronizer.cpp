@@ -128,8 +128,9 @@ void TimeSynchronizer::calculateCompensation(const std::string& other_agent_id, 
     double time_offset = ((t_RXj - t_TXi) - (t_RXi - t_TXj)) / 2; //The difference in ticks between the agents
     int agent_compensation = std::floor(time_offset /
                                         2.0);//The amount this agent should compensate. Floor makes sure we get an integer difference, i.e. 0.5 means only one agent shifts one tick
-    assert(agent_compensation == 0);
-
+    // assert(agent_compensation == 0);
+    printf("Agent %s compensated %d ticks with agent %s\n", agent->id.c_str(), agent_compensation, other_agent_id.c_str());
+    printf("Agent %s: t_TXi: %f t_RXj: %f t_TXj: %f t_RXi: %f\n", agent->id.c_str(), t_TXi, t_RXj, t_TXj, t_RXi);
 //    if (agent_compensation != 0) {
         this->compensations[other_agent_id] = agent_compensation;
 
@@ -144,6 +145,7 @@ void TimeSynchronizer::calculateCompensation(const std::string& other_agent_id, 
     //Positive means agent is behind other agent
 }
 void TimeSynchronizer::syncMissionTime(Agent* agent){
+    printf("n compensations: %d\n", this->compensations.size());
     if (this->compensations.empty()) {
         return;
     }
@@ -154,9 +156,10 @@ void TimeSynchronizer::syncMissionTime(Agent* agent){
     }
     auto avg_compensation = static_cast<double>(agent_compensation) / this->compensations.size();
     agent_compensation = std::floor(avg_compensation);
-
+    printf("Agent %s ticks before compensation: %d\n", agent->id.c_str(), agent->elapsed_ticks);
     uint32_t synced_ticks = agent->elapsed_ticks + agent_compensation;
     agent->elapsed_ticks = synced_ticks;
+    printf("Agent %s ticks after compensation: %d\n", agent->id.c_str(), agent->elapsed_ticks);
 
 //    argos::LOG << "Agent " << agent->id << " compensated average " << agent_compensation << " ticks" << std::endl;
     this->compensations.clear();

@@ -5,7 +5,7 @@
 #ifndef DIFFERENTIALDRIVE_H_
 #define DIFFERENTIALDRIVE_H_
 #include "MotorController.h"
-
+#include <string>
 
 
 class DifferentialDrive {
@@ -25,7 +25,7 @@ public:
     double current_speed_left;
 
     DifferentialDrive();
-    DifferentialDrive(float max_speed_straight, float max_speed_turn);
+    DifferentialDrive(std::string id, float max_speed_straight, float max_speed_turn);
 
 
 //    void setActuator(argos::CCI_PiPuckDifferentialDriveActuator *differentialDriveActuator);
@@ -44,7 +44,7 @@ private:
     double forwardRPM_R = 210;//210;
     double turnRPM_L = 210;//220;
     double turnRPM_R = 210;//220;
-    
+
     
     
     

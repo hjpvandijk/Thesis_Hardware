@@ -23,10 +23,28 @@ DifferentialDrive::DifferentialDrive(){
     //TODO: Init PID
 }
 
-DifferentialDrive::DifferentialDrive(float max_speed_straight,
+DifferentialDrive::DifferentialDrive(std::string id, float max_speed_straight,
                                      float max_speed_turn){
     this->max_speed_straight = max_speed_straight;
     this->max_speed_turn = max_speed_turn;
+
+    if (id == "0D351F00F5DF8253"){
+        this->forwardRPM_L = 230;
+        this->forwardRPM_R = 230;
+        this->turnRPM_L = 230;
+        this->turnRPM_R = 230;
+    } 
+    // else if (id == "12F959FD3BDFD31D"){
+    //     this->forwardRPM_L = 210;
+    //     this->forwardRPM_R = 210;
+    //     this->turnRPM_L = 210;
+    //     this->turnRPM_R = 210;
+    // } else {
+    //     this->forwardRPM_L = 220;
+    //     this->forwardRPM_R = 220;
+    //     this->turnRPM_L = 220;
+    //     this->turnRPM_R = 220;
+    // }
     
     this->acceleration = 0.5;
     this->deceleration = 0.5;

@@ -12,8 +12,8 @@ import traceback
 # MQTT_BROKER_IP = "192.168.1.66"  # Replace with your MQTT broker's IP address
 MQTT_BROKER_IP = "192.168.176.64"
 MQTT_TOPIC = "test/topic"
-AGENT_ID = "12F959FD3BDFD31C"  #  The agent's ID.  The code will filter out messages not for this agent.
-
+# AGENT_ID = "12F959FD3BDFD31C"  #  The agent's ID.  The code will filter out messages not for this agent.
+MAP_AGENT_ID = "0D351F00F5DF8253"
 # Map and Display settings
 PIXELS_PER_METER = 200  # Number of pixels per meter for display
 MAP_WIDTH_METERS = 5  # Width of the map in meters
@@ -35,13 +35,15 @@ TRAIL_LENGTH = 10  # Number of previous positions to keep for the trail
 pygame_initialized = False
 screen = None
 font = None
-agent_location = (0.0, 0.0)  # Initial agent position in meters (x, y)
-agent_target = (9999, 9999)  # Initial target position in meters (x, y)
-agent_heading = 0.0  # Initial agent heading in degrees
-agent_path = []
+agents = {}
+
+# agent_location = (0.0, 0.0)  # Initial agent position in meters (x, y)
+# agent_target = (9999, 9999)  # Initial target position in meters (x, y)
+# agent_heading = 0.0  # Initial agent heading in degrees
+# agent_path = []
 map_data = {}  # (x, y) in cell coordinates, value: 0 (free), 1 (obstacle), None (unknown)
 route = []  # List of tuples (x, y) in cell coordinates. (start, end)
-agent_velocities = {}
+# agent_velocities = {}
 elapsed_ticks = 0
 ticks_per_second = 10
 current_time = 0.0
@@ -191,24 +193,18 @@ def draw_grid():
     pygame.draw.line(screen, CENTERLINE_COLOR, (MAP_WIDTH_METERS*PIXELS_PER_METER // 2, 0), (MAP_WIDTH_METERS*PIXELS_PER_METER // 2, int(MAP_HEIGHT_METERS*PIXELS_PER_METER)))
     pygame.draw.line(screen, CENTERLINE_COLOR, (0, MAP_HEIGHT_METERS*PIXELS_PER_METER // 2), (int(MAP_WIDTH_METERS*PIXELS_PER_METER), MAP_HEIGHT_METERS*PIXELS_PER_METER // 2))
 
-    #Draw lines every meter
-    for i in range(-int(MAP_WIDTH_METERS/2), int(MAP_WIDTH_METERS/2)+1):
-        pygame.draw.line(screen, CENTERLINE_COLOR, (map_to_display_coordinates(i, -int(MAP_HEIGHT_METERS/2))), (map_to_display_coordinates(i, MAP_HEIGHT_METERS)))
-        pygame.draw.line(screen, CENTERLINE_COLOR, (map_to_display_coordinates(-int(MAP_WIDTH_METERS/2), i)), (map_to_display_coordinates(MAP_WIDTH_METERS, i)))
+    # Draw lines every meter
+    for i in range(-int(MAP_WIDTH_METERS / 2), int(MAP_WIDTH_METERS / 2) + 1):
+        start_x, start_y = map_to_display_coordinates(i, -MAP_HEIGHT_METERS / 2)
+        end_x, end_y = map_to_display_coordinates(i, MAP_HEIGHT_METERS / 2)
+        pygame.draw.line(screen, CENTERLINE_COLOR, (start_x, start_y), (end_x, end_y))
+
+        start_x, start_y = map_to_display_coordinates(-MAP_WIDTH_METERS / 2, i)
+        end_x, end_y = map_to_display_coordinates(MAP_WIDTH_METERS / 2, i)
+        pygame.draw.line(screen, CENTERLINE_COLOR, (start_x, start_y), (end_x, end_y))
 
     #draw coordinates at ends
-    right_coordinate = map_to_display_coordinates(MAP_WIDTH_METERS/2 - 1, 0)
-    text_right = font.render(f"({int(MAP_WIDTH_METERS/2)},0)", True, (255, 255, 255))
-    screen.blit(text_right, (right_coordinate))
-    left_coordinate = map_to_display_coordinates(-MAP_WIDTH_METERS/2, 0)
-    text_left = font.render(f"({-int(MAP_WIDTH_METERS/2)},0)", True, (255, 255, 255))
-    screen.blit(text_left, (left_coordinate))
-    top_coordinate = map_to_display_coordinates(0, MAP_HEIGHT_METERS/2)
-    text_top = font.render(f"(0,{int(MAP_HEIGHT_METERS/2)})", True, (255, 255, 255))
-    screen.blit(text_top, (top_coordinate))
-    bottom_coordinate = map_to_display_coordinates(0, -MAP_HEIGHT_METERS/2+0.5)
-    text_bottom = font.render(f"(0,{-int(MAP_HEIGHT_METERS/2)})", True, (255, 255, 255))
-    screen.blit(text_bottom, (bottom_coordinate))
+    # right_cooiit(text_bottom, (bottom_coordinate))
 
 def find_quadrant(x, y, box_x, box_y, box_size):
     """
@@ -288,35 +284,39 @@ def draw_map():
         pygame.draw.rect(screen, (0, 100, 0), rect, 1)
     
 
-def draw_agent(x_m, y_m, x_t, y_t, heading):
-    """Draws the agent as a triangle with its heading, using meters."""
-    display_x, display_y = map_to_display_coordinates(x_m, y_m)
-    point1 = (display_x, display_y)
-    angle_rad = math.radians(-heading)
-    # print(f"Agent: {x_m}, {y_m} -> {display_x}, {display_y} -> {heading}")
-    #0 degrees is pointing to the right, 90 degrees is pointing up.
+def draw_agents(agents):
+    for agent_id, agent in agents.items():
+        """Draws the agent as a triangle with its heading, using meters."""
+        x_m, y_m = agent['location']
+        x_t, y_t = agent['target']
+        heading = agent['heading']
+        display_x, display_y = map_to_display_coordinates(x_m, y_m)
+        point1 = (display_x, display_y)
+        angle_rad = math.radians(-heading)
+        # print(f"Agent: {x_m}, {y_m} -> {display_x}, {display_y} -> {heading}")
+        #0 degrees is pointing to the right, 90 degrees is pointing up.
 
 
-    point2_x = display_x + 15 * math.cos(angle_rad - math.pi / 6)
-    point2_y = display_y + 15 * math.sin(angle_rad - math.pi / 6)
-    point3_x = display_x + 15 * math.cos(angle_rad + math.pi / 6)
-    point3_y = display_y + 15 * math.sin(angle_rad + math.pi / 6)
-    points = [point1, (point2_x, point2_y), (point3_x, point3_y)]
-    pygame.draw.polygon(screen, AGENT_COLOR, points)
-    if (- MAP_WIDTH_METERS / 2 < x_t < MAP_WIDTH_METERS / 2) and (- MAP_HEIGHT_METERS / 2 < y_t < MAP_HEIGHT_METERS / 2):
-        # Draw the target as a small circle
-        target_display_x, target_display_y = map_to_display_coordinates(x_t, y_t)
-        pygame.draw.circle(screen, (0, 0, 255), (target_display_x, target_display_y), 5)
+        point2_x = display_x + 15 * math.cos(angle_rad - math.pi / 6)
+        point2_y = display_y + 15 * math.sin(angle_rad - math.pi / 6)
+        point3_x = display_x + 15 * math.cos(angle_rad + math.pi / 6)
+        point3_y = display_y + 15 * math.sin(angle_rad + math.pi / 6)
+        points = [point1, (point2_x, point2_y), (point3_x, point3_y)]
+        pygame.draw.polygon(screen, AGENT_COLOR, points)
+        if (- MAP_WIDTH_METERS / 2 < x_t < MAP_WIDTH_METERS / 2) and (- MAP_HEIGHT_METERS / 2 < y_t < MAP_HEIGHT_METERS / 2):
+            # Draw the target as a small circle
+            target_display_x, target_display_y = map_to_display_coordinates(x_t, y_t)
+            pygame.draw.circle(screen, (0, 0, 255), (target_display_x, target_display_y), 5)
 
-    heading_x = display_x + 2*PIXELS_PER_METER * math.cos(angle_rad)
-    heading_y = display_y + 2*PIXELS_PER_METER * math.sin(angle_rad)
-    pygame.draw.line(screen, HEADING_COLOR, (display_x, display_y), (heading_x, heading_y), 2)
+        heading_x = display_x + 2*PIXELS_PER_METER * math.cos(angle_rad)
+        heading_y = display_y + 2*PIXELS_PER_METER * math.sin(angle_rad)
+        pygame.draw.line(screen, HEADING_COLOR, (display_x, display_y), (heading_x, heading_y), 2)
 
-def draw_agent_path():
-    """Draws the agent's path, which is stored in meters."""
-    if len(agent_path) > 1:
-        points = [map_to_display_coordinates(x_m, y_m) for x_m, y_m in agent_path]
-        pygame.draw.lines(screen, AGENT_PATH_COLOR, False, points, 2)
+# def draw_agent_path():
+#     """Draws the agent's path, which is stored in meters."""
+#     if len(agent_path) > 1:
+#         points = [map_to_display_coordinates(x_m, y_m) for x_m, y_m in agent_path]
+#         pygame.draw.lines(screen, AGENT_PATH_COLOR, False, points, 2)
 
 def draw_route():
     """Draws the route on the Pygame screen."""
@@ -329,30 +329,40 @@ def draw_route():
 
 def on_message(client, userdata, message):
     """Callback function for incoming MQTT messages."""
-    global agent_location, agent_target, agent_heading, map_data, elapsed_ticks, agent_velocities, current_time, route
+    global agents, map_data, elapsed_ticks, current_time, route
     payload = message.payload.decode("utf-8")
     if payload.startswith("<LOG>"):
         return
-    try:    
+    try:        
         sender_id = get_id_from_message(payload)
-        if sender_id != AGENT_ID:
+        if sender_id == 'CLIENT':
             return
+        if sender_id not in agents:
+            agents[sender_id] = {
+                'location': (0, 0),
+                'target': (0, 0),
+                'velocity': (0, 0),
+                'heading': 0,
+            }
 
         # target_id = get_target_id_from_message(payload)
         # if target_id != "A" and target_id != AGENT_ID:
         #     return
 
         message_content = payload.split(']', 1)[1] if ']' in payload else payload
-
+        if message_content.startswith("elapsed"):
+            return
         if message_content.startswith("C:"):
             try:
                 parts = message_content[2:].split("|")
                 if len(parts) == 2:
                     pos_str, frontier_str = parts
                     x, y = parse_coordinate(pos_str)  # These are in meters now.
-                    agent_location = (x, y)  # Update agent location.
+                    # agent_location = (x, y)  # Update agent location.
+                    agents[sender_id]['location'] = (x, y)
                     fx, fy = parse_coordinate(frontier_str)
-                    agent_target = (fx, fy)  # Update agent target.
+                    # agent_target = (fx, fy)  # Update agent target.
+                    agents[sender_id]['target'] = (fx, fy)
                 else:
                     print(f"Error: Expected 2 parts in C message, got {len(parts)}: {message_content}")
             except Exception as e:
@@ -362,11 +372,17 @@ def on_message(client, userdata, message):
             try:
                 vector_string = message_content[2:]
                 new_vector = vector2_from_string(vector_string)
-                agent_velocities[sender_id] = new_vector
+                # agent_velocities[sender_id] = new_vector
+                agents[sender_id]['velocity'] = new_vector
+                velocity_x, velocity_y = new_vector
+                agents[sender_id]['heading'] = math.degrees(math.atan2(velocity_y, velocity_x)) % 360
+
             except Exception as e:
                 print(f"Error parsing V message: {e}, content: {message_content}")
 
         elif message_content.startswith("M:"):
+            if sender_id != MAP_AGENT_ID:
+                return
             try:
                 # map_data.clear()
                 chunks = message_content[2:].split("|")
@@ -429,7 +445,7 @@ def cleanup_pygame():
 
 def main():
     """Main function to initialize MQTT client and Pygame."""
-    global agent_location, agent_target, agent_heading, agent_path, elapsed_ticks, ticks_per_second, current_time, route
+    global agents, elapsed_ticks, ticks_per_second, current_time, route
 
     client = mqtt.Client()
     client.on_message = on_message
@@ -462,25 +478,28 @@ def main():
                     running = False
 
             # Simulate agent movement.  agent_location is in meters.
-            elapsed_ticks += 1
-            if elapsed_ticks % 10 == 0:
-                if agent_velocities:
-                  first_agent_id = next(iter(agent_velocities))
-                  velocity_x, velocity_y = agent_velocities[first_agent_id]
-                  agent_heading = math.degrees(math.atan2(velocity_y, velocity_x)) % 360
-                  print(f"heading: {agent_heading}")
-                #   agent_location = (agent_location[0] + velocity_x * 0.1, agent_location[1] + velocity_y * 0.1) # move by 0.1 meters per second.
-                #   agent_heading = (agent_heading + 5) % 360
-                  agent_path.append(agent_location)
-                  if len(agent_path) > TRAIL_LENGTH:
-                      agent_path.pop(0)
+            # elapsed_ticks += 1
+            # if elapsed_ticks % 10 == 0:
+            #     if agents:
+            #       for agent_id, agent in agents.items():
+            #         # first_agent_id = next(iter(agent_velocities))
+            #         # velocity_x, velocity_y = agent_velocities[first_agent_id]
+            #         #   agent_heading = math.degrees(math.atan2(velocity_y, velocity_x)) % 360
+            #         #   print(f"heading: {agent_heading}")
+            #             velocity_x, velocity_y = agent['velocity']
+            #             agents[agent_id]['heading'] = math.degrees(math.atan2(velocity_y, velocity_x)) % 360
+            #         #   agent_location = (agent_location[0] + velocity_x * 0.1, agent_location[1] + velocity_y * 0.1) # move by 0.1 meters per second.
+            #         #   agent_heading = (agent_heading + 5) % 360
+            #         #   agent_path.append(agent_location)
+            #         #   if len(agent_path) > TRAIL_LENGTH:
+            #         #       agent_path.pop(0)
 
             screen.fill((0, 0, 0))
             draw_grid()
             draw_map()
             # map_data.clear()
-            draw_agent_path()
-            draw_agent(*agent_location, *agent_target, agent_heading)
+            # draw_agent_path()
+            draw_agents(agents)
             draw_route()
             #draw coordinate (0,0)
             pygame.draw.circle(screen, (255, 255, 0), map_to_display_coordinates(0, 0), 5)
@@ -498,10 +517,10 @@ def main():
             pygame.draw.circle(screen, (255, 255, 0), cell_to_display_coordinates(-3.5, 1.4), 5)
 
             #publish message
-            client.publish(MQTT_TOPIC, f"<A>[1235151]C:99999;99999|999999999;999999999")
+            # client.publish(MQTT_TOPIC, f"<A>[CLIENT]C:99999;99999|999999999;999999999")
 
-            text_surface = font.render(f"Agent: {AGENT_ID}", True, (255, 255, 255))
-            screen.blit(text_surface, (10, 10))
+            # text_surface = font.render(f"Agent: {AGENT_ID}", True, (255, 255, 255))
+            # screen.blit(text_surface, (10, 10))
 
             text_current_time = font.render(f"Current time: {current_time}", True, (255, 255, 255))
             screen.blit(text_current_time, (10, 50))

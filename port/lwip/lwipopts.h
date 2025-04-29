@@ -5,13 +5,13 @@
 #define TCPIP_THREAD_PRIO   30		//Move to top priority bellow Timer
 #define TCPIP_THREAD_STACKSIZE 2560 //1024
 #define DEFAULT_THREAD_STACKSIZE 1024
-#define DEFAULT_RAW_RECVMBOX_SIZE 8
-#define TCPIP_MBOX_SIZE 			4 //8 Reduced as don't think used
+#define DEFAULT_RAW_RECVMBOX_SIZE 64 //32
+#define TCPIP_MBOX_SIZE 			32 //8 Reduced as don't think used
 #define LWIP_TIMEVAL_PRIVATE 0
 
 #define LWIP_SOCKET                 1
 #define LWIP_SO_RCVBUF				1
-#define RECV_BUFSIZE_DEFAULT		512 //256
+#define RECV_BUFSIZE_DEFAULT		2048 //512 //256
 
 #define MEM_LIBC_MALLOC             0
 
@@ -138,7 +138,7 @@
 // #define DHCP_DEBUG                 LWIP_DBG_ON// LWIP_DBG_OFF
 
 
-#define DEFAULT_TCP_RECVMBOX_SIZE 128
+#define DEFAULT_TCP_RECVMBOX_SIZE 512 //128
 
 //SNTP NETWORK TIME
 #include "pico/stdlib.h"
@@ -147,7 +147,7 @@
 void sntpSetTimeSec(uint32_t sec);
 #define SNTP_SET_SYSTEM_TIME(sec) sntpSetTimeSec(sec)
 //MEMP_NUM_SYS_TIMEOUTS Needs to be one larger than default for SNTP
-#define MEMP_NUM_SYS_TIMEOUT            (LWIP_NUM_SYS_TIMEOUT_INTERNAL + 2)
+#define MEMP_NUM_SYS_TIMEOUT            (LWIP_NUM_SYS_TIMEOUT_INTERNAL + 3)
 
 //Once an hour
 #define SNTP_UPDATE_DELAY 60000*60
@@ -160,6 +160,8 @@ void sntpSetTimeSec(uint32_t sec);
 #define MQTT_OUTPUT_RINGBUF_SIZE   4000//7000//5000 //4196//2048  // Or larger, depending on your messages
 #define MQTT_REQ_MAX_IN_FLIGHT 12
 #define MQTT_DEBUG LWIP_DBG_OFF
+
+#define MEMP_NUM_TCPIP_MSG_API 32
 
 
 #endif /* __LWIPOPTS_H__ */

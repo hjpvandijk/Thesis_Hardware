@@ -55,7 +55,7 @@ Agent::Agent(std::string id, double rootbox_size, const std::string& config_file
                                           this->config.BATTERY_CAPACITY);
     //Set the speed to the maximum achievable speed, based on the the motor specs. TODO: Put that info in differential drive instead
     auto max_achievable_speed = this->batteryManager.motionSystemBatteryManager.getMaxAchievableSpeed();
-    this->differential_drive = DifferentialDrive(std::min(max_achievable_speed, this->speed),
+    this->differential_drive = DifferentialDrive(this->id, std::min(max_achievable_speed, this->speed),
                                                  std::min(max_achievable_speed,
                                                           this->speed * this->config.TURNING_SPEED_RATIO));
     this->speed = this->differential_drive.max_speed_straight;
@@ -384,6 +384,14 @@ void Agent::checkForObstacles() {
     for (int sensor_index = 0; sensor_index < Agent::num_sensors; sensor_index++) {
         argos::CRadians sensor_rotation = this->heading - sensor_index * argos::CRadians::PI_OVER_TWO;
         auto sensorDistance = this->distanceSensorHandler->getDistance(sensor_index);
+        //Left and right sensors are off-center, so we need to adjust the start position
+        Coordinate startPos = this->position;
+        if (sensor_index == 1 || sensor_index == 3){ //Right or left
+            //startposition is 3.9cm from center
+            double startposopposite = argos::Sin(heading) * 0.039;
+            double startposadjacent = argos::Cos(heading) * 0.039;
+            startPos = {this->position.x + startposadjacent, this->position.y + startposopposite};
+        }
         // printf("Sensor %d: %f ", sensor_index, sensorDistance);
         if (sensorDistance < this->config.DISTANCE_SENSOR_PROXIMITY_RANGE) {
             // std::string pos = "FRONT";
@@ -398,7 +406,7 @@ void Agent::checkForObstacles() {
             double opposite = argos::Sin(sensor_rotation) * sensorDistance;
             double adjacent = argos::Cos(sensor_rotation) * sensorDistance;
 
-            Coordinate object = {this->position.x + adjacent, this->position.y + opposite};
+            Coordinate object = {startPos.x + adjacent, startPos.y + opposite};
             // printf("Object at (%f, %f) with distance %f\n", object.x, object.y, sensorDistance);
             //If the detected object is actually another agent, add it as a free area
             //So check if the object coordinate is close to another agent
@@ -418,19 +426,19 @@ void Agent::checkForObstacles() {
             }
             //Only add the object as an obstacle if it is not close to another agent
             if (!close_to_other_agent) {
-                if (sqrt(pow(this->position.x - object.x, 2) + pow(this->position.y - object.y, 2)) <
+                if (sqrt(pow(startPos.x - object.x, 2) + pow(startPos.y - object.y, 2)) <
                     this->quadtree->getResolution()) {
                     addedObjectAtAgentLocation = true;
                 }
                 quadtree::Box objectBox = addObjectLocation(object);
                 if (objectBox.size != 0) {
                     if (!addedObjectAtAgentLocation)
-                        addFreeAreaBetween(this->position, object, objectBox);
+                        addFreeAreaBetween(startPos, object, objectBox);
                 } else {
-                    if (!addedObjectAtAgentLocation) addFreeAreaBetween(this->position, object);
+                    if (!addedObjectAtAgentLocation) addFreeAreaBetween(startPos, object);
                 }
             } else {
-                if (!addedObjectAtAgentLocation) addFreeAreaBetween(this->position, object);
+                if (!addedObjectAtAgentLocation) addFreeAreaBetween(startPos, object);
             }
 
 
@@ -439,8 +447,8 @@ void Agent::checkForObstacles() {
             double adjacent = argos::Cos(sensor_rotation) * this->config.DISTANCE_SENSOR_PROXIMITY_RANGE;
 
 
-            Coordinate end_of_ray = {this->position.x + adjacent, this->position.y + opposite};
-            if (!addedObjectAtAgentLocation) addFreeAreaBetween(this->position, end_of_ray);
+            Coordinate end_of_ray = {startPos.x + adjacent, startPos.y + opposite};
+            if (!addedObjectAtAgentLocation) addFreeAreaBetween(startPos, end_of_ray);
         }
     }
     // printf("\n");
@@ -962,15 +970,19 @@ void Agent::startMission() {
 
 void Agent::doStep() {
     // printf("Agent %s: %f\n", this->getId().c_str(), this->heading);
+    // broadcastMessage("elapsed_ticks:" + std::to_string(this->elapsed_ticks));
     if(this->elapsed_ticks % 100 == 0) printf("Agent %s: %f with state %d\n", this->getId().c_str(), this->elapsed_ticks/this->ticks_per_second, this->state);
     // printf("resolution: %f\n", this->quadtree->getResolution());
     if (this->state != State::NO_MISSION) { //Don't do anything before mission
-        broadcastMessage("C:" + this->position.toString() + "|" + this->currentBestFrontier.toString());
+        if (this->elapsed_ticks % 3 == 0)
+            broadcastMessage("C:" + this->position.toString() + "|" + this->currentBestFrontier.toString());
         sendQuadtreeToCloseAgents();
-        argos::CVector2 velocity = {1, 0};
-        velocity.Rotate(this->heading);
-        broadcastMessage(
-                "V:" + std::to_string(velocity.GetX()) + ";" + std::to_string(velocity.GetY()));
+        if (this->elapsed_ticks % 3 == 0){
+            argos::CVector2 velocity = {1, 0};
+            velocity.Rotate(this->heading);
+            broadcastMessage(
+                    "V:" + std::to_string(velocity.GetX()) + ";" + std::to_string(velocity.GetY()));
+        }
         timeSyncWithCloseAgents();
 
         checkMessages();

@@ -51,10 +51,10 @@ void UARTHandler::run() {
     uint8_t receivedByte;
     int i=0;
     while (true) {
-        if (i%100 == 0) {
-            printf("UARTHandler running\n");
-        }
-        i++;
+        // if (i%100 == 0) {
+        //     printf("UARTHandler running\n");
+        // }
+        // i++;
         if (xQueueReceive(rxQueue, &receivedByte, portMAX_DELAY) == pdTRUE) {
             // printf("Received from queue: %d, %02X\n", dataIndex, receivedByte);
 

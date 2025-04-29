@@ -324,48 +324,48 @@ void main_task(void* params){
     // LED_STATE = !LED_STATE;
     // cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, LED_STATE);
     // printf("Main task running\n");
-    // agentExecutor.agent.setPosition(uartHandler.getPosition().x, uartHandler.getPosition().y);
-    // agentExecutor.agent.setHeading(uartHandler.getHeading());
+    agentExecutor.agent.setPosition(uartHandler.getPosition().x, uartHandler.getPosition().y);
+    agentExecutor.agent.setHeading(uartHandler.getHeading());
 
     // printf("heading: %f\n", ToDegrees(uartHandler.getHeading()));
 
-    agentExecutor.agent.setPosition(x, y);
-    agentExecutor.agent.setHeading(argos::CRadians(heading));
-    x += x_step; 
-    y += y_step;
-    heading += heading_step;
-    if (heading > 3.14){
-      heading = -3.13;
-    }
-    printf("Agent position: %f, %f\n", x, y);
-    printf("%d, %d\n", x == -4, y == 4);
-    if ((abs(x+2) < 1e-6) && (abs(y-2) < 1e-6)){ // x==-2 && y==2
-      x_step = 0.1;
-      y_step = 0;
-    } else if (abs(x-2) < 1e-6 && abs(y-2) < 1e-6){ // x==2 && y==2
-      x_step = 0;
-      y_step = -0.1;
-    } else if (abs(x-2) < 1e-6 && abs(y+2) < 1e-6){ // x==2 && y==-2
-      x_step = -0.1;
-      y_step = 0;
-    } else if (abs(x+2) < 1e-6 && abs(y+2) < 1e-6){ // x==-2 && y==-2
-      x_step = 0;
-      y_step = 0.1;
-    }
+    // agentExecutor.agent.setPosition(x, y);
+    // agentExecutor.agent.setHeading(argos::CRadians(heading));
+    // x += x_step; 
+    // y += y_step;
+    // heading += heading_step;
+    // if (heading > 3.14){
+    //   heading = -3.13;
+    // }
+    // // printf("Agent position: %f, %f\n", x, y);
+    // // printf("%d, %d\n", x == -4, y == 4);
+    // if ((abs(x+2) < 1e-6) && (abs(y-2) < 1e-6)){ // x==-2 && y==2
+    //   x_step = 0.1;
+    //   y_step = 0;
+    // } else if (abs(x-2) < 1e-6 && abs(y-2) < 1e-6){ // x==2 && y==2
+    //   x_step = 0;
+    //   y_step = -0.1;
+    // } else if (abs(x-2) < 1e-6 && abs(y+2) < 1e-6){ // x==2 && y==-2
+    //   x_step = -0.1;
+    //   y_step = 0;
+    // } else if (abs(x+2) < 1e-6 && abs(y+2) < 1e-6){ // x==-2 && y==-2
+    //   x_step = 0;
+    //   y_step = 0.1;
+    // }
     // if (i%100==0){
-    // // runTimeStats();
+    // runTimeStats();
     // size_t freeHeapSize = xPortGetFreeHeapSize();
     // // printf("Free heap size: %zu\n", freeHeapSize);
     // size_t totalHeapSize = getPotentialHeapSize();
     // // printf("Total heap size: %zu\n", totalHeapSize);
     // std::string freeheapsize = std::to_string(freeHeapSize) + " / " + std::to_string(totalHeapSize);
-    // radio.send_message(freeheapsize, "LOG");
-    // // printf("main thread running: %d\n", i);
-    // // printf("LWIP:\n");
-    // // runTimeStatsLWIP();
+    // // radio.send_message(freeheapsize, "LOG");
+    // // // printf("main thread running: %d\n", i);
+    // printf("LWIP:\n");
+    // runTimeStatsLWIP();
     
     // }
-    // i++;
+    i++;
     // std::string message = "Hello World " + std::to_string(i++);
     // radio.send_message(message, "agent1");
 
