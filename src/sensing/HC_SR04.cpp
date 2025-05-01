@@ -25,7 +25,7 @@ void HC_SR04::echo_irq_handler(uint gpio, uint32_t events, HC_SR04* instance) {
 
     // printf("GPIO %d IRQ: %d\n", gpio, events);
 
-    // if (xSemaphoreTakeFromISR(instance->dataMutex, NULL) == pdTRUE) {
+    if (xSemaphoreTakeFromISR(instance->dataMutex, NULL) == pdTRUE) {
         if (events & GPIO_IRQ_EDGE_RISE) {
             instance->echo_start = current_time;
             // if (gpio == 12) printf("ECHO_LEFT RISE\n");
@@ -34,10 +34,10 @@ void HC_SR04::echo_irq_handler(uint gpio, uint32_t events, HC_SR04* instance) {
             instance->echo_end = current_time;
             instance->valid_value = true;
         }
-    // xSemaphoreGiveFromISR(instance->dataMutex, NULL);
-    // } else {
-    //     printf("Failed to acquire mutex in ISR\n");
-    // }
+    xSemaphoreGiveFromISR(instance->dataMutex, NULL);
+    } else {
+        printf("Failed to acquire mutex in ISR\n");
+    }
 }
 
 // Initialize the HC-SR04 sensor

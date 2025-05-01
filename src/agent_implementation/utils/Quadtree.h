@@ -672,6 +672,64 @@ namespace quadtree {
         }
 
         /**
+         * @brief Create a vector of strings from the quadtree
+         */
+        void toStringVectorPheromones(std::vector<std::string> *strings, double after_time_s, double current_time_s) {
+            std::function<void(const Cell *, const Box &, int &, std::string &)> traverse;
+            std::string grouped_message = "";
+            grouped_message.clear();
+            int counter = 0;
+            traverse = [&](const Cell *cell, const Box &box, int &counter, std::string &grouped_message) {
+                if (cell == nullptr) return;
+
+                bool allSameOccupancy = false;
+
+                // Write the bounding box, it's size, and occupancy of this cell to the file
+                // If the occupancy is ANY, we don't need to store it, as the children will have new info
+                // If the occupancy is UNKNOWN, we don't need to store it, as a child not existing will also yield in an UNKNOWN
+//                    if (value.occupancy == ANY || value.occupancy == UNKNOWN)
+//                        continue;
+                // If the occupancy is OCCUPIED or FREE or AMBIGUOUS, we want to exchange that information. And we don't have to send any children as they will be all the same.
+                if (cell->quadNode.occupancy != ANY && cell->quadNode.occupancy != UNKNOWN) {
+                    allSameOccupancy = true;
+                    if (cell->quadNode.visitedAtS > after_time_s) { //Only send nodes that are updated after the given time
+                        std::string str =
+                            std::to_string(box.getCenter().x) + ';' + std::to_string(box.getCenter().y) + ':' +
+                            std::to_string(calculatePheromone(cell->quadNode.visitedAtS, P(cell->quadNode.LConfidence), current_time_s));
+
+                        //Group every numberOfNodesPerMessage nodes
+                        grouped_message.append(str);
+                        if (counter == this->numberOfNodesPerMessage - 1) {
+                            strings->emplace_back(grouped_message);
+                            grouped_message.clear();
+                            counter = 0;
+                        } else {
+                            grouped_message.append("|");
+                            counter++;
+                        }
+                    }
+                }
+
+                // If all children have the same occupancy, we don't need to send the children, as they will all have the same occupancy.
+                if (!allSameOccupancy) {
+                    // Traverse the children
+                    for (int i = 0; i < 4; i++) {
+                        if (cell->children.at(i)) {
+                            traverse(cell->children.at(i).get(), computeBox(box, i), counter, grouped_message);
+                        }
+                    }
+                }
+            };
+
+            traverse(mRoot.get(), mBox, counter, grouped_message);
+            //If there is an incomplete group, also send it.
+            if (!grouped_message.empty()) {
+                grouped_message.pop_back(); //Delete the last delimiter
+                strings->emplace_back(grouped_message);
+            }
+        }
+
+        /**
          * Get all the boxes in the quadtree
          * @return
          */

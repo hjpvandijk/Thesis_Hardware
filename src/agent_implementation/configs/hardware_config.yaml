@@ -5,7 +5,7 @@ communication:
   agent_info_relevant: 10
   max_jitter: 10
   message_loss_probability: 0
-  quadtree_exchange_interval: 5
+  quadtree_exchange_interval: 10
   time_sync_interval: 5
   wifi_range: 99999
   wifi_speed: 10
@@ -31,7 +31,7 @@ control:
     max_route_length: 30
   separate_frontiers:
     distance_threshold: 1.0
-  turn_speed_ratio: 0.1
+  turn_speed_ratio: 1
   turn_threshold: 20
 forces:
   agent_alignment_radius: 1
@@ -74,7 +74,7 @@ quadtree:
   evaporation_time: 9999999
   merge_max_confidence_diff: 0.05
   merge_max_visited_time_difference: 5
-  resolution: 0.4
+  resolution: 0.3
 sensors:
   distance_sensor_jitter: 0
   distance_sensor_noise_factor: 0

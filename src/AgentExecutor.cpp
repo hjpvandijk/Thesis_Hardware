@@ -1,7 +1,7 @@
 #include "AgentExecutor.h"
 
 AgentExecutor::AgentExecutor(std::string id) {
-    agent = Agent(std::move(id), 5, "config_yaml_data.h");
+    agent = Agent(std::move(id), 9.1, "config_yaml_data.h");
     agent.setPosition(0, 0);
 }
 
@@ -13,7 +13,7 @@ AgentExecutor::~AgentExecutor() {}
  */
 void AgentExecutor::run() {
     // printf("AgentExecutor task started\n");
-    agent.startMission();
+    // agent.startMission();
     TickType_t xLastWakeTime = xTaskGetTickCount();
     while (true) {
         // printf("Agent %s running\n", agent.getId().c_str());

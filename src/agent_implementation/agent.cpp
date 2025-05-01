@@ -22,7 +22,7 @@ Agent::Agent(std::string id, double rootbox_size, const std::string& config_file
     this->position = {0.0, 0.0};
     this->heading = argos::CRadians(0);
     this->targetHeading = argos::CRadians(0);
-    this->speed = 1;
+    this->speed = 0.23;
     this->swarm_vector = argos::CVector2(0, 0);
     this->force_vector = argos::CVector2(0, 1);
     this->messages = std::vector<std::string>(0);
@@ -54,7 +54,7 @@ Agent::Agent(std::string id, double rootbox_size, const std::string& config_file
                                           this->config.MOTOR_NO_LOAD_CURRENT, this->config.BATTERY_VOLTAGE,
                                           this->config.BATTERY_CAPACITY);
     //Set the speed to the maximum achievable speed, based on the the motor specs. TODO: Put that info in differential drive instead
-    auto max_achievable_speed = this->batteryManager.motionSystemBatteryManager.getMaxAchievableSpeed();
+    auto max_achievable_speed = 0.23f; //this->batteryManager.motionSystemBatteryManager.getMaxAchievableSpeed();
     this->differential_drive = DifferentialDrive(this->id, std::min(max_achievable_speed, this->speed),
                                                  std::min(max_achievable_speed,
                                                           this->speed * this->config.TURNING_SPEED_RATIO));
@@ -964,8 +964,13 @@ void Agent::timeSyncWithCloseAgents() {
 }
 
 void Agent::startMission() {
+    if (this->state != State::NO_MISSION) {
+        printf("Agent %s: Mission already started\n", this->getId().c_str());
+        return;
+    }
     this->state = State::EXPLORING;
     this->deploymentLocation = this->position;
+    printf("Agent %s: Starting mission\n", this->getId().c_str());
 }
 
 void Agent::doStep() {
@@ -985,8 +990,8 @@ void Agent::doStep() {
         }
         timeSyncWithCloseAgents();
 
-        checkMessages();
     }
+    checkMessages();
     if (this->state == State::NO_MISSION || this->state == State::FINISHED_EXPLORING || this->state == State::MAP_RELAYED) {
         //Do nothing
         this->differential_drive.stop();
@@ -1011,6 +1016,15 @@ void Agent::doStep() {
             if (map_relayed) {
                 this->state = State::MAP_RELAYED;
             }
+        } else if (this->state == State::MAP_RELAYED) {
+            if (this->elapsed_ticks % (int(this->ticks_per_second)*10) == 0) {
+                //If we are finished relaying the map, send the map for data collection
+                std::vector<std::string> quadTreeToStrings = {};
+                this->quadtree->toStringVectorPheromones(&quadTreeToStrings, 0, this->elapsed_ticks/this->ticks_per_second);
+                for (const std::string &str: quadTreeToStrings) {
+                    broadcastMessage("F:" + str);
+                }
+            }
         }
     } else { //Exploring or returning
         if (this->elapsed_ticks >= this->ticks_per_second) { //Wait one second before starting, allowing initial communication
@@ -1031,7 +1045,7 @@ void Agent::doStep() {
 
                 if (diffDeg > argos::CDegrees(-this->config.TURN_THRESHOLD_DEGREES) &&
                     diffDeg < argos::CDegrees(this->config.TURN_THRESHOLD_DEGREES)) {
-                    //Go straight
+                //     //Go straight
                     this->differential_drive.forward();
                 } else if (diffDeg > argos::CDegrees(0)) {
                     //turn right
@@ -1190,6 +1204,9 @@ void Agent::parseMessages() {
             continue; //If the message is not broadcast to all agents and not for this agent, skip it
 
         std::string messageContent = message.substr(message.find(']') + 1);
+        if (messageContent.at(0) == 'S'){
+            this->startMission();
+        }
         if (messageContent.at(0) == 'C') {
             auto splitStrings = splitString(messageContent.substr(2), "|");
             Coordinate receivedPosition = coordinateFromString(splitStrings[0]);

@@ -6,6 +6,7 @@ import math
 import numpy as np
 from dataclasses import dataclass
 import traceback
+import os
 
 
 # Configuration
@@ -13,12 +14,12 @@ import traceback
 MQTT_BROKER_IP = "192.168.176.64"
 MQTT_TOPIC = "test/topic"
 # AGENT_ID = "12F959FD3BDFD31C"  #  The agent's ID.  The code will filter out messages not for this agent.
-MAP_AGENT_ID = "0D351F00F5DF8253"
+MAP_AGENT_ID = ""
 # Map and Display settings
-PIXELS_PER_METER = 200  # Number of pixels per meter for display
-MAP_WIDTH_METERS = 5  # Width of the map in meters
-MAP_HEIGHT_METERS = 5  # Height of the map in meters
-CELL_SIZE_METERS = 0.31250 #0.15625  # Actual cell size in meters
+PIXELS_PER_METER = 100  # Number of pixels per meter for display
+MAP_WIDTH_METERS = 9.1  # Width of the map in meters
+MAP_HEIGHT_METERS = 9.1 # Height of the map in meters
+CELL_SIZE_METERS = 0.284375 #0.15625  # Actual cell size in meters
 # CELL_SIZE = int(CELL_SIZE_METERS * PIXELS_PER_METER)  # Size of each cell in pixels (0.31 meters)
 GRID_COLOR = (50, 50, 50)
 CENTERLINE_COLOR = (255, 255, 0)
@@ -36,17 +37,18 @@ pygame_initialized = False
 screen = None
 font = None
 agents = {}
+LOG_FILE = "mqtt_log.txt"
 
 # agent_location = (0.0, 0.0)  # Initial agent position in meters (x, y)
 # agent_target = (9999, 9999)  # Initial target position in meters (x, y)
 # agent_heading = 0.0  # Initial agent heading in degrees
 # agent_path = []
-map_data = {}  # (x, y) in cell coordinates, value: 0 (free), 1 (obstacle), None (unknown)
+# map_data = {}  # (x, y) in cell coordinates, value: 0 (free), 1 (obstacle), None (unknown)
 route = []  # List of tuples (x, y) in cell coordinates. (start, end)
 # agent_velocities = {}
 elapsed_ticks = 0
 ticks_per_second = 10
-current_time = 0.0
+# current_time = 0.0
 
 @dataclass
 class Box:
@@ -206,6 +208,8 @@ def draw_grid():
     #draw coordinates at ends
     # right_cooiit(text_bottom, (bottom_coordinate))
 
+
+
 def find_quadrant(x, y, box_x, box_y, box_size):
     """
     Determines which quadrant (sub-box) the point (x, y) belongs to within the given box.
@@ -241,9 +245,9 @@ def find_quadrant(x, y, box_x, box_y, box_size):
         return box_x + half_size / 2, box_y - half_size / 2
 
 #Recursive if cell_size > CELL_SIZE_M
-def add_to_data_map(x,y, value, box_x, box_y, box_size):
+def add_to_data_map(x,y, value, box_x, box_y, box_size, sender_id):
     if box_size == CELL_SIZE_METERS:
-        map_data[(box_x,box_y)] = value
+        agents[sender_id]['map_data'][(box_x,box_y)] = value
     else:
         quadrant = find_quadrant(x, y, box_x, box_y, box_size)
         if quadrant == (box_x, box_y):
@@ -253,35 +257,43 @@ def add_to_data_map(x,y, value, box_x, box_y, box_size):
             (top_right_box_x, top_right_box_y) = box_x + box_size / 4, box_y + box_size / 4
             (bottom_left_box_x, bottom_left_box_y) = box_x - box_size / 4, box_y - box_size / 4
             (bottom_right_box_x, bottom_right_box_y) = box_x + box_size / 4, box_y - box_size / 4
-            add_to_data_map(top_left_box_x, top_left_box_y, value, box_x, box_y, box_size)
-            add_to_data_map(top_right_box_x, top_right_box_y, value, box_x, box_y, box_size)
-            add_to_data_map(bottom_left_box_x, bottom_left_box_y, value, box_x, box_y, box_size)
-            add_to_data_map(bottom_right_box_x, bottom_right_box_y, value, box_x, box_y, box_size)
-            
+            add_to_data_map(top_left_box_x, top_left_box_y, value, box_x, box_y, box_size, sender_id)
+            add_to_data_map(top_right_box_x, top_right_box_y, value, box_x, box_y, box_size, sender_id)
+            add_to_data_map(bottom_left_box_x, bottom_left_box_y, value, box_x, box_y, box_size, sender_id)
+            add_to_data_map(bottom_right_box_x, bottom_right_box_y, value, box_x, box_y, box_size, sender_id)
         else:
             new_box_x, new_box_y = quadrant
             new_box_size = box_size / 2
-            add_to_data_map(x, y, value, new_box_x, new_box_y, new_box_size)
+            add_to_data_map(x, y, value, new_box_x, new_box_y, new_box_size, sender_id)
     
-
+def log_message_to_file(message):
+    """Logs MQTT messages to a file."""
+    try:
+        with open(LOG_FILE, "a") as log_file:
+            log_file.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')}.{int(time.time() * 1000) % 1000:03d} - {message}\n")
+    except Exception as e:
+        print(f"Error logging message to file: {e}")
 
 def draw_map():
     """Draws the map on the Pygame screen based on the map_data."""
-    map_data_copy = dict(map_data)
-    for (cell_x, cell_y), confidence in map_data_copy.items():
-        display_x, display_y = cell_to_display_coordinates(cell_x, cell_y)
-        rect = pygame.Rect(
-            display_x - int(CELL_SIZE_METERS*PIXELS_PER_METER // 2), display_y - int(CELL_SIZE_METERS*PIXELS_PER_METER) // 2, int(CELL_SIZE_METERS*PIXELS_PER_METER), int(CELL_SIZE_METERS*PIXELS_PER_METER)
-        )  # Center the rect
-        # print(f"confidence: {confidence}")
-        pheromone = calculate_pheromone(0, confidence, current_time)
-        # color = (255*(1-certainty), 255*(certainty), 0) if certainty > 0 else (255*(-certainty), 255*(1+certainty), 0)
-        color = (255*(1-pheromone), 255*(pheromone), 0)
+    for agent_id, agent in agents.items():
+        if agent_id != MAP_AGENT_ID:
+            continue
+        map_data_copy = dict(agent['map_data'])
+        for (cell_x, cell_y), confidence in map_data_copy.items():
+            display_x, display_y = cell_to_display_coordinates(cell_x, cell_y)
+            rect = pygame.Rect(
+                display_x - int(CELL_SIZE_METERS*PIXELS_PER_METER // 2), display_y - int(CELL_SIZE_METERS*PIXELS_PER_METER) // 2, int(CELL_SIZE_METERS*PIXELS_PER_METER), int(CELL_SIZE_METERS*PIXELS_PER_METER)
+            )  # Center the rect
+            # print(f"confidence: {confidence}")
+            pheromone = calculate_pheromone(0, confidence, agent['current_time'])
+            # color = (255*(1-certainty), 255*(certainty), 0) if certainty > 0 else (255*(-certainty), 255*(1+certainty), 0)
+            color = (255*(1-pheromone), 255*(pheromone), 0)
 
-        # print(f"Pheromone: {pheromone} -> {color}")
-        pygame.draw.rect(screen, color, rect)
-        #Draw dark green outline of rectangle
-        pygame.draw.rect(screen, (0, 100, 0), rect, 1)
+            # print(f"Pheromone: {pheromone} -> {color}")
+            pygame.draw.rect(screen, color, rect)
+            #Draw dark green outline of rectangle
+            pygame.draw.rect(screen, (0, 100, 0), rect, 1)
     
 
 def draw_agents(agents):
@@ -308,8 +320,8 @@ def draw_agents(agents):
             target_display_x, target_display_y = map_to_display_coordinates(x_t, y_t)
             pygame.draw.circle(screen, (0, 0, 255), (target_display_x, target_display_y), 5)
 
-        heading_x = display_x + 2*PIXELS_PER_METER * math.cos(angle_rad)
-        heading_y = display_y + 2*PIXELS_PER_METER * math.sin(angle_rad)
+        heading_x = display_x + 1.5*PIXELS_PER_METER * math.cos(angle_rad)
+        heading_y = display_y + 1.5*PIXELS_PER_METER * math.sin(angle_rad)
         pygame.draw.line(screen, HEADING_COLOR, (display_x, display_y), (heading_x, heading_y), 2)
 
 # def draw_agent_path():
@@ -329,20 +341,27 @@ def draw_route():
 
 def on_message(client, userdata, message):
     """Callback function for incoming MQTT messages."""
-    global agents, map_data, elapsed_ticks, current_time, route
+    global agents, elapsed_ticks, route, MAP_AGENT_ID
     payload = message.payload.decode("utf-8")
+    log_message_to_file(payload)
     if payload.startswith("<LOG>"):
         return
     try:        
         sender_id = get_id_from_message(payload)
         if sender_id == 'CLIENT':
             return
+        if MAP_AGENT_ID == "":
+            MAP_AGENT_ID = sender_id
         if sender_id not in agents:
             agents[sender_id] = {
                 'location': (0, 0),
                 'target': (0, 0),
                 'velocity': (0, 0),
                 'heading': 0,
+                'traveled_path': 0,
+                'battery_usage': 0,
+                'current_time' : 0,
+                'map_data': {},
             }
 
         # target_id = get_target_id_from_message(payload)
@@ -359,6 +378,9 @@ def on_message(client, userdata, message):
                     pos_str, frontier_str = parts
                     x, y = parse_coordinate(pos_str)  # These are in meters now.
                     # agent_location = (x, y)  # Update agent location.
+                    prevlocation = agents[sender_id]['location']
+                    traveled_since_last = math.sqrt((x - prevlocation[0])**2 + (y - prevlocation[1])**2)
+                    agents[sender_id]['traveled_path'] += traveled_since_last
                     agents[sender_id]['location'] = (x, y)
                     fx, fy = parse_coordinate(frontier_str)
                     # agent_target = (fx, fy)  # Update agent target.
@@ -381,23 +403,23 @@ def on_message(client, userdata, message):
                 print(f"Error parsing V message: {e}, content: {message_content}")
 
         elif message_content.startswith("M:"):
-            if sender_id != MAP_AGENT_ID:
-                return
+            # if sender_id != MAP_AGENT_ID:
+            #     return
             try:
                 # map_data.clear()
                 chunks = message_content[2:].split("|")
                 for chunk in chunks:
                     if chunk:
                         x, y, confidence, timestamp = quadnode_from_string(chunk)
-                        current_time = max(current_time, timestamp)
+                        agents[sender_id]['current_time'] = max(agents[sender_id]['current_time'], timestamp)
                         print(f"Timestamp: {timestamp}, Confidence: {confidence}")
-                        print(f"Current time: {current_time}")
+                        print(f"Current time: {agents[sender_id]['current_time']}")
                         # x, y are cell coordinates.
                         # if confidence > 0.5:
                         #     map_data[(x, y)] = 1
                         # elif confidence < -0.5:
                         #     map_data[(x, y)] = 0
-                        add_to_data_map(x, y, confidence, 0, 0, MAP_WIDTH_METERS)
+                        add_to_data_map(x, y, confidence, 0, 0, MAP_WIDTH_METERS, sender_id)
             except Exception as e:
                 #print stacktrace
                 traceback.print_exc()
@@ -445,12 +467,19 @@ def cleanup_pygame():
 
 def main():
     """Main function to initialize MQTT client and Pygame."""
-    global agents, elapsed_ticks, ticks_per_second, current_time, route
+    global agents, elapsed_ticks, ticks_per_second, route, LOG_FILE
 
     client = mqtt.Client()
     client.on_message = on_message
 
     try:
+        LOG_FILE = "mqtt_log.txt"
+        #if log file exists, add an int to the filename
+        if os.path.exists(LOG_FILE):
+            i = 1
+            while os.path.exists(f"mqtt_log_{i}.txt"):
+                i += 1
+            LOG_FILE = f"mqtt_log_{i}.txt"
         client.connect(MQTT_BROKER_IP, 1883, 60)
         client.subscribe(MQTT_TOPIC)
         client.loop_start()
@@ -467,6 +496,7 @@ def main():
         
 
         running = True
+        i = 0
         while running:
             #Check if connected, else reconnect
             if not client.is_connected():
@@ -500,7 +530,7 @@ def main():
             # map_data.clear()
             # draw_agent_path()
             draw_agents(agents)
-            draw_route()
+            # draw_route()
             #draw coordinate (0,0)
             pygame.draw.circle(screen, (255, 255, 0), map_to_display_coordinates(0, 0), 5)
             # for i in range(15):
@@ -514,17 +544,26 @@ def main():
             # #draw coordinate (5,5)
             # pygame.draw.circle(screen, (255, 255, 0), map_to_display_coordinates(4, 4), 5)
 
-            pygame.draw.circle(screen, (255, 255, 0), cell_to_display_coordinates(-3.5, 1.4), 5)
+            # pygame.draw.circle(screen, (255, 255, 0), cell_to_display_coordinates(-3.5, 1.4), 5)
 
             #publish message
-            # client.publish(MQTT_TOPIC, f"<A>[CLIENT]C:99999;99999|999999999;999999999")
+            client.publish(MQTT_TOPIC, f"<A>[CLIENT]C:99999;99999|999999999;999999999")
 
             # text_surface = font.render(f"Agent: {AGENT_ID}", True, (255, 255, 255))
             # screen.blit(text_surface, (10, 10))
 
-            text_current_time = font.render(f"Current time: {current_time}", True, (255, 255, 255))
-            screen.blit(text_current_time, (10, 50))
+            # text_current_time = font.render(f"Current time: {current_time}", True, (255, 255, 255))
+            # screen.blit(text_current_time, (10, 50))
+            # print current_time for each agent
+            for agent_id, agent in agents.items():
+                print(f"Agent {agent_id}: {agent['current_time']}")
 
+            if (i%(10*ticks_per_second) == 0):
+                #Print traveled path to a file
+                with open(f"{LOG_FILE}_traveled_path.txt", "a") as f:
+                    for agent_id, agent in agents.items():
+                        f.write(f"{agent_id}@{agents[agent_id]['current_time']}: {agent['traveled_path']}\n")
+            i += 1
             pygame.display.flip()
             time.sleep(1 / ticks_per_second)
 
